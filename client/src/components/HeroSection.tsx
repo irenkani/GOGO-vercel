@@ -19,8 +19,7 @@ const HeroContainer = styled.section<{ $background?: string }>`
   justify-content: center;
   align-items: center;
   position: relative;
-  background: ${(props) =>
-    props.$background || 'linear-gradient(180deg, #5038a0 0%, #121242 100%)'};
+  background: ${(props) => props.$background ?? 'transparent'};
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -41,15 +40,15 @@ const WaveBackground = styled.div`
   align-items: center;
   justify-content: space-between; /* Spread bars across full width */
   gap: 3px; /* Larger gap for fewer bars */
-  z-index: 1; /* Lower z-index to ensure it's below content */
+  z-index: 2; /* Above gradient overlay, below content */
   opacity: 0;
   padding: 0 1%; /* Small padding to prevent edge cutoff */
   pointer-events: none; /* Don't catch events directly - parent will handle them */
-  background: rgba(80, 56, 160, 0.15); /* Semi-transparent background tint */
+  background: transparent;
 `;
 
 // Backdrop image behind everything
-const BackdropImage = styled.div<{ $image?: string; $opacity?: number }>`
+const BackdropImage = styled.div<{ $image?: string; $grayscale?: boolean }>`
   position: absolute;
   inset: 0;
   background-image: ${(props) =>
@@ -57,10 +56,21 @@ const BackdropImage = styled.div<{ $image?: string; $opacity?: number }>`
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: ${(props) => (typeof props.$opacity === 'number' ? props.$opacity : 0.25)};
   z-index: 0;
   pointer-events: none;
-  filter: brightness(0.3);
+  filter: ${(props) => (props.$grayscale ? 'grayscale(1)' : 'none')};
+`;
+
+// Gradient overlay sits above image, below waves/content
+const GradientOverlay = styled.div<{ $background?: string }>`
+  position: absolute;
+  inset: 0;
+  background: ${(p) => p.$background ?? 'transparent'};
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 1;
+  pointer-events: none;
 `;
 
 // Individual wave bar styled for a music waveform
@@ -82,7 +92,7 @@ const ContentWrapper = styled.div`
   padding: 0 5%;
   position: relative;
   margin-top: 0;
-  z-index: 2; /* Content above wave but still allows events to pass through */
+  z-index: 3; /* Content above waves and gradient overlay */
   display: grid;
   grid-template-columns: 1fr;
   align-items: center;
@@ -258,8 +268,8 @@ const Chip = styled.span`
     transform: translateY(-1px);
   }
 `;
-function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<HeroContent> } = {}): JSX.Element {
-  const { disableFetch = false, heroOverride } = props;
+function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<HeroContent>; disableAnimations?: boolean } = {}): JSX.Element {
+  const { disableFetch = false, heroOverride, disableAnimations = false } = props;
   const [hero, setHero] = useState<HeroContent | null>(null);
 
   // Create refs for animations
@@ -280,6 +290,7 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
   const waveAnimatablesRef = useRef<any[]>([]);
   const containerBoundsRef = useRef<DOMRect | null>(null);
   const isVisibleRef = useRef<boolean>(true);
+  const hasEntranceAnimatedRef = useRef<boolean>(false);
 
   // Real-time animation loop state
   const timeRef = useRef<number>(0);
@@ -443,7 +454,7 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
     }
 
     // Initialize animations for text elements using direct AnimeJS calls
-    if (titleRef.current) {
+    if (!disableAnimations && titleRef.current) {
       animate(titleRef.current, {
         opacity: [0, 1],
         translateY: [50, 0],
@@ -451,8 +462,8 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
         easing: 'easeOutExpo',
       });
     }
-
-    if (underlineRef.current) {
+    
+    if (!disableAnimations && underlineRef.current) {
       animate(underlineRef.current, {
         scaleX: [0, 1],
         opacity: [0, 1],
@@ -461,8 +472,8 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
         delay: 200,
       });
     }
-
-    if (subtitleRef.current) {
+    
+    if (!disableAnimations && subtitleRef.current) {
       animate(subtitleRef.current, {
         opacity: [0, 1],
         translateY: [20, 0],
@@ -471,8 +482,8 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
         delay: 400,
       });
     }
-
-    if (yearRef.current) {
+    
+    if (!disableAnimations && yearRef.current) {
       animate(yearRef.current, {
         opacity: [0, 1],
         translateY: [20, 0],
@@ -481,8 +492,8 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
         delay: 600,
       });
     }
-
-    if (taglineRef.current) {
+    
+    if (!disableAnimations && taglineRef.current) {
       animate(taglineRef.current, {
         opacity: [0, 1],
         translateY: [10, 0],
@@ -498,7 +509,7 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
       secondaryButtonRef.current,
     ].filter((button): button is HTMLButtonElement => button !== null);
 
-    if (buttons.length > 0) {
+    if (!disableAnimations && buttons.length > 0) {
       animate(buttons, {
         opacity: [0, 1],
         translateY: [20, 0],
@@ -509,7 +520,7 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
     }
 
     // Animate wave background
-    if (waveBackgroundRef.current) {
+    if (!disableAnimations && waveBackgroundRef.current) {
       animate(waveBackgroundRef.current, {
         opacity: [0, 0.7],
         duration: 1200,
@@ -527,13 +538,15 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
 
     // Initialize wave animatables and start animation loop
     setTimeout(() => {
-      initializeWaveAnimatables();
+      if (!disableAnimations) {
+        initializeWaveAnimatables();
+      }
       // Respect reduced motion preference
       const prefersReduced =
         typeof window !== 'undefined' &&
         typeof window.matchMedia !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (!prefersReduced) {
+      if (!disableAnimations && !prefersReduced) {
         startAnimationLoop();
       }
     }, 100);
@@ -549,7 +562,7 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
             window.matchMedia('(prefers-reduced-motion: reduce)').matches;
           if (entry.isIntersecting) {
             isVisibleRef.current = true;
-            if (!prefersReduced) {
+            if (!disableAnimations && !prefersReduced) {
               startAnimationLoop();
             }
           } else {
@@ -611,31 +624,99 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
     heroOverride,
   ]);
 
+  // Ensure entrance animations run once when hero content becomes available
+  useEffect(() => {
+    if (!hero || hasEntranceAnimatedRef.current || disableAnimations) return;
+
+    if (titleRef.current) {
+      animate(titleRef.current, {
+        opacity: [0, 1],
+        translateY: [50, 0],
+        duration: 1000,
+        easing: 'easeOutExpo',
+      });
+    }
+    if (underlineRef.current) {
+      animate(underlineRef.current, {
+        scaleX: [0, 1],
+        opacity: [0, 1],
+        duration: 800,
+        easing: 'easeOutExpo',
+        delay: 200,
+      });
+    }
+    if (subtitleRef.current) {
+      animate(subtitleRef.current, {
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 600,
+        easing: 'easeOutExpo',
+        delay: 400,
+      });
+    }
+    if (yearRef.current) {
+      animate(yearRef.current, {
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 600,
+        easing: 'easeOutExpo',
+        delay: 600,
+      });
+    }
+    if (taglineRef.current) {
+      animate(taglineRef.current, {
+        opacity: [0, 1],
+        translateY: [10, 0],
+        duration: 500,
+        easing: 'easeOutExpo',
+        delay: 700,
+      });
+    }
+    const buttons = [primaryButtonRef.current, secondaryButtonRef.current].filter(
+      (b): b is HTMLButtonElement => b != null,
+    );
+    if (buttons.length > 0) {
+      animate(buttons, {
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 600,
+        easing: 'easeOutExpo',
+        delay: stagger(200, { start: 800 }),
+      });
+    }
+
+    if (waveBackgroundRef.current) {
+      animate(waveBackgroundRef.current, {
+        opacity: [0, 0.7],
+        duration: 1200,
+        easing: 'easeOutExpo',
+        delay: 1000,
+      });
+    }
+
+    hasEntranceAnimatedRef.current = true;
+  }, [hero, disableAnimations]);
+
   // Reduced number of wave bars for better performance
   const numWaveBars = 120;
   const BASE_WAVE_HEIGHT = 160;
 
-  const title = hero?.title ?? 'IMPACT REPORT';
-  const subtitle = hero?.subtitle ?? 'GUITARS OVER GUNS';
-  const year = hero?.year ?? '2024-2025';
-  const tagline = hero?.tagline ?? 'CHOOSE YOUR SOUND';
-  const bubbles = hero?.bubbles ?? [
-    'Miami',
-    'Chicago',
-    'Los Angeles',
-    'New York',
-  ];
-  const primaryCta = hero?.primaryCta ?? {
-    label: 'Watch Our Story',
-    href: 'https://youtu.be/21ufVKC5TEo?si=3N7xugwbc3Z4RNm-',
-  };
-  const secondaryCta = hero?.secondaryCta ?? {
-    label: 'Support Our Mission',
-    href: 'https://www.classy.org/give/352794/#!/donation/checkout',
-  };
+  const title = hero?.title;
+  const subtitle = hero?.subtitle;
+  const year = hero?.year;
+  const tagline = hero?.tagline;
+  const bubbles = hero?.bubbles;
+  const primaryCta = hero?.primaryCta;
+  const secondaryCta = hero?.secondaryCta;
   const background = hero?.backgroundColor;
   const backgroundImage = hero?.backgroundImage;
-  const backgroundOpacity = (hero as any)?.backgroundOpacity as number | undefined;
+  const backgroundImageGrayscale = (hero as any)?.backgroundImageGrayscale === true;
+  const titleColor = (hero as any)?.titleColor as string | undefined;
+  const subtitleColor = (hero as any)?.subtitleColor as string | undefined;
+  const yearColor = (hero as any)?.yearColor as string | undefined;
+  const taglineColor = (hero as any)?.taglineColor as string | undefined;
+  const primaryCtaColor = (hero as any)?.primaryCtaColor as string | undefined;
+  const secondaryCtaColor = (hero as any)?.secondaryCtaColor as string | undefined;
 
   const isValidGradient = (s?: string) => {
     if (!s) return false;
@@ -643,8 +724,11 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
     return /linear-gradient\(/i.test(s);
   };
 
+  const gradientOk = isValidGradient(background || undefined);
   const composedBackground = (() => {
-    const gradientOk = isValidGradient(background || undefined);
+    if (backgroundImageGrayscale) {
+      return undefined; // draw gradient via overlay to keep it above the image
+    }
     if (backgroundImage) {
       return `${gradientOk ? background : ''}${gradientOk ? ', ' : ''}url(${backgroundImage})`;
     }
@@ -653,9 +737,15 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
 
   return (
     <HeroContainer $background={composedBackground}>
-      {/* Background image is now composed underneath the gradient via CSS backgrounds */}
+      {/* If grayscale requested, render the image as a separate layer with filter */}
+      {backgroundImage && backgroundImageGrayscale && (
+        <>
+          <BackdropImage $image={backgroundImage} $grayscale />
+          {gradientOk && <GradientOverlay $background={background as string} />}
+        </>
+      )}
       {/* Music waveform visualization */}
-      <WaveBackground ref={waveBackgroundRef}>
+      <WaveBackground ref={waveBackgroundRef} style={disableAnimations ? { opacity: 0 } : undefined}>
         {Array.from({ length: numWaveBars }).map((_, i) => {
           const uniqueId = `wave-bar-${i}`;
           const position = i / numWaveBars;
@@ -679,13 +769,51 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
 
       <ContentWrapper>
         <LeftContent>
-          {title && <MainTitle ref={titleRef}>{title}</MainTitle>}
+          {title && (
+            <MainTitle
+              ref={titleRef}
+              style={{
+                ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
+                ...(titleColor ? { color: titleColor } : {}),
+              }}
+            >
+              {title}
+            </MainTitle>
+          )}
           <TitleUnderline ref={underlineRef} />
           {subtitle && (
-            <SubtitleText ref={subtitleRef}>{subtitle}</SubtitleText>
+            <SubtitleText
+              ref={subtitleRef}
+              style={{
+                ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
+                ...(subtitleColor ? { color: subtitleColor } : {}),
+              }}
+            >
+              {subtitle}
+            </SubtitleText>
           )}
-          {year && <ReportYear ref={yearRef}>{year}</ReportYear>}
-          {tagline && <Tagline ref={taglineRef}>{tagline}</Tagline>}
+          {year && (
+            <ReportYear
+              ref={yearRef}
+              style={{
+                ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
+                ...(yearColor ? { color: yearColor } : {}),
+              }}
+            >
+              {year}
+            </ReportYear>
+          )}
+          {tagline && (
+            <Tagline
+              ref={taglineRef}
+              style={{
+                ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
+                ...(taglineColor ? { color: taglineColor } : {}),
+              }}
+            >
+              {tagline}
+            </Tagline>
+          )}
 
           {bubbles && bubbles.length > 0 && (
             <ChipsRow>
@@ -703,7 +831,7 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
                 rel="noopener noreferrer"
                 style={{ textDecoration: 'none' }}
               >
-                <PrimaryButton ref={primaryButtonRef}>
+                <PrimaryButton ref={primaryButtonRef} style={primaryCtaColor ? { color: primaryCtaColor } : undefined}>
                   <span>▶</span>
                   <span>{primaryCta.label}</span>
                 </PrimaryButton>
@@ -716,7 +844,7 @@ function HeroSection(props: { disableFetch?: boolean; heroOverride?: Partial<Her
                 rel="noopener noreferrer"
                 style={{ textDecoration: 'none' }}
               >
-                <SecondaryButton ref={secondaryButtonRef}>
+                <SecondaryButton ref={secondaryButtonRef} style={secondaryCtaColor ? { color: secondaryCtaColor } : undefined}>
                   <span>{secondaryCta.label}</span>
                 </SecondaryButton>
               </a>

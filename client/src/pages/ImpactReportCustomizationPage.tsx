@@ -32,8 +32,18 @@ import { saveMedia } from "../services/media.api.ts";
 import { fetchHeroContent, saveHeroContent } from "../services/impact.api.ts";
 import "../../assets/fonts/fonts.css";
 import { useSnackbar } from "notistack";
+import ColorPickerPopover from "../components/ColorPickerPopover";
 
 const MemoHeroSection = React.memo(HeroSection);
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = React.useState(value);
+  React.useEffect(() => {
+    const t = window.setTimeout(() => setDebounced(value), delayMs);
+    return () => window.clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
 
 function parseGradient(input: string | null | undefined): {
   degree: number;
@@ -121,6 +131,47 @@ function isValidColorStop(color: string | null | undefined): boolean {
   const rgba =
     /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(0|1|0?\.\d+)\s*\)$/i;
   return hex.test(color) || rgb.test(color) || rgba.test(color);
+}
+
+// Convert any supported color string (hex/rgb/rgba) to 6-digit hex for <input type="color">
+function toHex(color: string): string {
+  const c = color.trim();
+  const hex3or6 = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+  const rgb = /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i;
+  const rgba =
+    /^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(0|1|0?\.\d+)\s*\)$/i;
+
+  if (hex3or6.test(c)) {
+    if (c.length === 4) {
+      // Expand #rgb -> #rrggbb
+      const r = c[1];
+      const g = c[2];
+      const b = c[3];
+      return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+    }
+    return c.toLowerCase();
+  }
+
+  const mRgb = c.match(rgb);
+  if (mRgb) {
+    const r = Math.max(0, Math.min(255, parseInt(mRgb[1], 10)));
+    const g = Math.max(0, Math.min(255, parseInt(mRgb[2], 10)));
+    const b = Math.max(0, Math.min(255, parseInt(mRgb[3], 10)));
+    const to2 = (n: number) => n.toString(16).padStart(2, "0");
+    return `#${to2(r)}${to2(g)}${to2(b)}`.toLowerCase();
+  }
+
+  const mRgba = c.match(rgba);
+  if (mRgba) {
+    const r = Math.max(0, Math.min(255, parseInt(mRgba[1], 10)));
+    const g = Math.max(0, Math.min(255, parseInt(mRgba[2], 10)));
+    const b = Math.max(0, Math.min(255, parseInt(mRgba[3], 10)));
+    const to2 = (n: number) => n.toString(16).padStart(2, "0");
+    return `#${to2(r)}${to2(g)}${to2(b)}`.toLowerCase();
+  }
+
+  // Fallback
+  return "#000000";
 }
 
 // Styled components for dark theme
@@ -264,6 +315,12 @@ interface HeroSection {
   subtitle: string;
   year: string;
   tagline: string;
+  titleColor?: string;
+  subtitleColor?: string;
+  yearColor?: string;
+  taglineColor?: string;
+  primaryCtaColor?: string;
+  secondaryCtaColor?: string;
   bubblesCsv: string;
   degree: number;
   color1: string;
@@ -271,9 +328,9 @@ interface HeroSection {
   gradientOpacity: number;
   backgroundImageUrl: string | null;
   backgroundImagePreview: string | null;
-  backgroundImageAlt: string;
-  backgroundOpacity: number;
+  backgroundImageFile?: File | null;
   ariaLabel: string;
+  backgroundGrayscale: boolean;
   // CTA editing fields
   primaryCtaLabel: string;
   primaryCtaHref: string;
@@ -367,9 +424,9 @@ function ImpactReportCustomizationPage() {
       gradientOpacity: 0,
       backgroundImageUrl: null,
       backgroundImagePreview: null,
-      backgroundImageAlt: "",
-      backgroundOpacity: 0,
+      backgroundImageFile: null,
       ariaLabel: "",
+      backgroundGrayscale: false,
       primaryCtaLabel: "Watch Our Story",
       primaryCtaHref: "https://youtu.be/21ufVKC5TEo?si=3N7xugwbc3Z4RNm-",
       secondaryCtaLabel: "Support Our Mission",
@@ -453,10 +510,8 @@ function ImpactReportCustomizationPage() {
   // Error states
   const [errors, setErrors] = useState<{
     general: string;
-    heroAlt?: string;
   }>({
     general: "",
-    heroAlt: undefined,
   });
 
   // Loading state
@@ -465,6 +520,9 @@ function ImpactReportCustomizationPage() {
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [heroUploadPct, setHeroUploadPct] = useState<number | null>(null);
   const [flashPreviewHero, setFlashPreviewHero] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState<ImpactReportForm | null>(
+    null,
+  );
   const [lastDeletedStat, setLastDeletedStat] = useState<{
     index: number;
     item: { id: string; number: string; label: string };
@@ -491,6 +549,49 @@ function ImpactReportCustomizationPage() {
     };
   } | null>(null);
   const [isMobilePreview, setIsMobilePreview] = useState(false);
+  const [colorPickerAnchor, setColorPickerAnchor] =
+    useState<HTMLElement | null>(null);
+  const [colorPickerField, setColorPickerField] = useState<
+    | "color1"
+    | "color2"
+    | "titleColor"
+    | "subtitleColor"
+    | "yearColor"
+    | "taglineColor"
+    | "primaryCtaColor"
+    | "secondaryCtaColor"
+    | null
+  >(null);
+  const openColorPicker = Boolean(colorPickerAnchor);
+  const currentPickerColor = colorPickerField
+    ? colorPickerField === "color1"
+      ? impactReportForm.hero.color1
+      : colorPickerField === "color2"
+        ? impactReportForm.hero.color2
+        : colorPickerField === "titleColor"
+          ? impactReportForm.hero.titleColor || "#ffffff"
+          : colorPickerField === "subtitleColor"
+            ? impactReportForm.hero.subtitleColor || "#77ddab"
+            : colorPickerColorMap(colorPickerField)
+    : "#000000";
+
+  function colorPickerColorMap(
+    field: NonNullable<typeof colorPickerField>,
+  ): string {
+    switch (field) {
+      case "yearColor":
+        return impactReportForm.hero.yearColor || "#e9bb4d";
+      case "taglineColor":
+        return impactReportForm.hero.taglineColor || COLORS.gogo_green;
+      case "primaryCtaColor":
+        return impactReportForm.hero.primaryCtaColor || "#ffffff";
+      case "secondaryCtaColor":
+        return impactReportForm.hero.secondaryCtaColor || "#ffffff";
+      default:
+        return "#000000";
+    }
+  }
+  // EyeDropper and swatches are implemented inside ColorPickerPopover
 
   // Refs for file inputs
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -503,6 +604,17 @@ function ImpactReportCustomizationPage() {
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+    const isHeicLike =
+      /heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name);
+    if (!allowedTypes.includes(file.type)) {
+      const message = isHeicLike
+        ? "HEIC images are not widely supported in browsers. Please upload a JPG or PNG instead."
+        : "Unsupported image format. Please upload a JPG, PNG, or WebP image.";
+      setErrors((prev) => ({ ...prev, general: message }));
+      enqueueSnackbar(message, { variant: "warning" });
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (readerEvent) => {
       if (section === "mission" && field === "image") {
@@ -539,7 +651,7 @@ function ImpactReportCustomizationPage() {
     }
   };
 
-  // Handle hero background image upload (upload to storage then set URL + preview)
+  // Handle hero background image selection (validate + local preview only)
   const handleHeroBackgroundUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -557,95 +669,18 @@ function ImpactReportCustomizationPage() {
       enqueueSnackbar(message, { variant: "warning" });
       return;
     }
-    try {
-      console.log("[admin][hero] background upload selected", {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      });
-      const ext = (file.name.split(".").pop() || "bin").toLowerCase();
-      const key = `hero/background.${ext}`;
-      const signed = await signUpload({
-        contentType: file.type,
-        extension: ext,
-        key,
-      });
-      console.log(
-        "[admin][hero] signed public URL",
-        signed.publicUrl,
-        "key",
-        signed.key,
-      );
-      setHeroUploadPct(0);
-      enqueueSnackbar("Uploading background…", { variant: "info" });
-
-      await new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open("PUT", signed.uploadUrl);
-        if (file.type) xhr.setRequestHeader("Content-Type", file.type);
-        xhr.upload.onprogress = (evt) => {
-          if (evt.lengthComputable) {
-            const pct = Math.round((evt.loaded / evt.total) * 100);
-            setHeroUploadPct(pct);
-          }
-        };
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve();
-          else reject(new Error(`Upload failed: ${xhr.status}`));
-        };
-        xhr.onerror = () => reject(new Error("Network error during upload"));
-        xhr.send(file);
-      });
-
-      // Save media record for reuse/library
-      try {
-        const mediaSave = await saveMedia({
-          key: signed.key,
-          publicUrl: signed.publicUrl,
-          contentType: file.type,
-          bytes: (file as File).size,
-          alt: impactReportForm.hero.backgroundImageAlt || undefined,
-          tag: "hero-background",
-        });
-        console.log("[admin][hero] media saved", {
-          id: mediaSave.id,
-          url: signed.publicUrl,
-        });
-      } catch (metaErr) {
-        console.warn(
-          "[admin][hero] media record save failed (non-fatal)",
-          metaErr,
-        );
-      }
-
-      enqueueSnackbar("Background uploaded", { variant: "success" });
-      const preview = URL.createObjectURL(file);
-      setImpactReportForm((prev) => ({
-        ...prev,
-        hero: {
-          ...prev.hero,
-          backgroundImageUrl: signed.publicUrl,
-          backgroundImagePreview: preview,
-        },
-      }));
-      console.log(
-        "[admin][hero] hero.backgroundImageUrl set",
-        signed.publicUrl,
-      );
-      setErrors((prev) => ({ ...prev, general: "" }));
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error("[admin][hero] Failed to upload background image", err);
-      enqueueSnackbar("Failed to upload background image", {
-        variant: "error",
-      });
-      setErrors((prev) => ({
-        ...prev,
-        general: "Failed to upload background image. Please try again.",
-      }));
-    } finally {
-      setHeroUploadPct(null);
-    }
+    // Local preview only; upload deferred until Save
+    const preview = URL.createObjectURL(file);
+    setImpactReportForm((prev) => ({
+      ...prev,
+      hero: {
+        ...prev.hero,
+        backgroundImagePreview: preview,
+        backgroundImageFile: file,
+      },
+    }));
+    setIsDirty(true);
+    setErrors((prev) => ({ ...prev, general: "" }));
   };
 
   // Video/overlay support removed
@@ -837,38 +872,50 @@ function ImpactReportCustomizationPage() {
       const parsedAlpha = alphaMatch
         ? Math.max(0, Math.min(1, parseFloat(alphaMatch[1] || "1")))
         : undefined;
-      setImpactReportForm((prev) => ({
-        ...prev,
-        hero: {
-          ...prev.hero,
-          title: hero.title ?? prev.hero.title,
-          subtitle: hero.subtitle ?? prev.hero.subtitle,
-          year: hero.year ?? prev.hero.year,
-          tagline: hero.tagline ?? prev.hero.tagline,
-          bubblesCsv: Array.isArray(hero.bubbles)
-            ? hero.bubbles.join(", ")
-            : prev.hero.bubblesCsv,
-          degree: g.degree,
-          color1: g.color1,
-          color2: g.color2,
-          gradientOpacity:
-            typeof parsedAlpha === "number"
-              ? parsedAlpha
-              : prev.hero.gradientOpacity,
-          backgroundImageUrl: hero.backgroundImage ?? null,
-          backgroundImagePreview: null,
-          backgroundOpacity:
-            typeof (hero as any).backgroundOpacity === "number"
-              ? (hero as any).backgroundOpacity
-              : prev.hero.backgroundOpacity,
-          primaryCtaLabel: hero.primaryCta?.label ?? prev.hero.primaryCtaLabel,
-          primaryCtaHref: hero.primaryCta?.href ?? prev.hero.primaryCtaHref,
-          secondaryCtaLabel:
-            hero.secondaryCta?.label ?? prev.hero.secondaryCtaLabel,
-          secondaryCtaHref:
-            hero.secondaryCta?.href ?? prev.hero.secondaryCtaHref,
-        },
-      }));
+      setImpactReportForm((prev) => {
+        const next: ImpactReportForm = {
+          ...prev,
+          hero: {
+            ...prev.hero,
+            title: hero.title ?? prev.hero.title,
+            subtitle: hero.subtitle ?? prev.hero.subtitle,
+            year: hero.year ?? prev.hero.year,
+            tagline: hero.tagline ?? prev.hero.tagline,
+            titleColor: (hero as any)?.titleColor ?? prev.hero.titleColor,
+            subtitleColor:
+              (hero as any)?.subtitleColor ?? prev.hero.subtitleColor,
+            yearColor: (hero as any)?.yearColor ?? prev.hero.yearColor,
+            taglineColor: (hero as any)?.taglineColor ?? prev.hero.taglineColor,
+            primaryCtaColor:
+              (hero as any)?.primaryCtaColor ?? prev.hero.primaryCtaColor,
+            secondaryCtaColor:
+              (hero as any)?.secondaryCtaColor ?? prev.hero.secondaryCtaColor,
+            bubblesCsv: Array.isArray(hero.bubbles)
+              ? hero.bubbles.join(", ")
+              : prev.hero.bubblesCsv,
+            degree: g.degree,
+            color1: toHex(g.color1),
+            color2: toHex(g.color2),
+            gradientOpacity:
+              typeof parsedAlpha === "number"
+                ? parsedAlpha
+                : prev.hero.gradientOpacity,
+            backgroundImageUrl: hero.backgroundImage ?? null,
+            backgroundImagePreview: null,
+            backgroundGrayscale:
+              (hero as any)?.backgroundImageGrayscale === true ? true : false,
+            primaryCtaLabel:
+              hero.primaryCta?.label ?? prev.hero.primaryCtaLabel,
+            primaryCtaHref: hero.primaryCta?.href ?? prev.hero.primaryCtaHref,
+            secondaryCtaLabel:
+              hero.secondaryCta?.label ?? prev.hero.secondaryCtaLabel,
+            secondaryCtaHref:
+              hero.secondaryCta?.href ?? prev.hero.secondaryCtaHref,
+          },
+        };
+        setSavedSnapshot(next);
+        return next;
+      });
     })();
   }, []);
 
@@ -877,22 +924,6 @@ function ImpactReportCustomizationPage() {
     setIsSubmitting(true);
 
     try {
-      // Validate hero alt if background image present
-      if (
-        impactReportForm.hero.backgroundImageUrl &&
-        !impactReportForm.hero.backgroundImageAlt.trim()
-      ) {
-        setErrors((prev) => ({
-          ...prev,
-          heroAlt: "Alt text is required when a background image is set.",
-        }));
-        enqueueSnackbar("Please add alt text for the background image", {
-          variant: "warning",
-        });
-        return;
-      } else {
-        setErrors((prev) => ({ ...prev, heroAlt: undefined }));
-      }
       // Save Hero content to backend
       const bubbles = impactReportForm.hero.bubblesCsv
         .split(",")
@@ -920,16 +951,69 @@ function ImpactReportCustomizationPage() {
         safeAlpha,
       );
 
-      const backgroundImagePayload =
+      // Upload background image if a new file is pending
+      let backgroundImagePayload =
         impactReportForm.hero.backgroundImageUrl ?? null;
+      if (impactReportForm.hero.backgroundImageFile) {
+        const file = impactReportForm.hero.backgroundImageFile as File;
+        const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+        const signed = await signUpload({
+          contentType: file.type,
+          extension: ext,
+          key: `hero/background.${ext}`,
+        });
+        setHeroUploadPct(0);
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("PUT", signed.uploadUrl);
+          if (file.type) xhr.setRequestHeader("Content-Type", file.type);
+          xhr.upload.onprogress = (evt) => {
+            if (evt.lengthComputable) {
+              const pct = Math.round((evt.loaded / evt.total) * 100);
+              setHeroUploadPct(pct);
+            }
+          };
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else reject(new Error(`Upload failed: ${xhr.status}`));
+          };
+          xhr.onerror = () => reject(new Error("Network error during upload"));
+          xhr.send(file);
+        });
+        try {
+          await saveMedia({
+            key: signed.key,
+            publicUrl: signed.publicUrl,
+            contentType: file.type,
+            bytes: file.size,
+            tag: "hero-background",
+          });
+        } catch {
+          // non-fatal
+        }
+        backgroundImagePayload = signed.publicUrl;
+        // Reflect new URL and clear pending file in state
+        setImpactReportForm((prev) => ({
+          ...prev,
+          hero: {
+            ...prev.hero,
+            backgroundImageUrl: signed.publicUrl,
+            backgroundImageFile: null,
+          },
+        }));
+        setHeroUploadPct(null);
+      }
 
       const payload = {
         backgroundColor,
         backgroundImage: backgroundImagePayload,
-        backgroundImageAlt: impactReportForm.hero.backgroundImageUrl
-          ? impactReportForm.hero.backgroundImageAlt || null
-          : null,
         // image is always full opacity; do not send backgroundOpacity
+        backgroundImageGrayscale:
+          impactReportForm.hero.backgroundGrayscale || undefined,
+        titleColor: impactReportForm.hero.titleColor || undefined,
+        subtitleColor: impactReportForm.hero.subtitleColor || undefined,
+        yearColor: impactReportForm.hero.yearColor || undefined,
+        taglineColor: impactReportForm.hero.taglineColor || undefined,
         title: impactReportForm.hero.title,
         subtitle: impactReportForm.hero.subtitle,
         year: impactReportForm.hero.year,
@@ -944,12 +1028,17 @@ function ImpactReportCustomizationPage() {
           label: impactReportForm.hero.secondaryCtaLabel || undefined,
           href: impactReportForm.hero.secondaryCtaHref || undefined,
         },
+        primaryCtaColor: impactReportForm.hero.primaryCtaColor || undefined,
+        secondaryCtaColor: impactReportForm.hero.secondaryCtaColor || undefined,
       };
       console.log("[admin][hero] save payload", payload);
       await saveHeroContent(payload);
       enqueueSnackbar("Impact report saved", { variant: "success" });
       setIsDirty(false);
       setLastSavedAt(new Date());
+      setSavedSnapshot(
+        JSON.parse(JSON.stringify(impactReportForm)) as ImpactReportForm,
+      );
     } catch (error) {
       console.error("Error saving impact report:", error);
       setErrors((prev) => ({
@@ -962,17 +1051,63 @@ function ImpactReportCustomizationPage() {
     }
   };
 
+  // Discard changes and restore last saved snapshot
+  const handleDiscard = () => {
+    if (!savedSnapshot) return;
+    const restore = JSON.parse(
+      JSON.stringify(savedSnapshot),
+    ) as ImpactReportForm;
+    setImpactReportForm(restore);
+    setIsDirty(false);
+    enqueueSnackbar("Changes discarded", { variant: "info" });
+  };
+
   // No preview toggle; preview is always visible on the left
 
   // Tab configuration
-  const tabs = [
-    { label: "Hero Section", value: 0 },
-    { label: "Mission", value: 1 },
-    { label: "Impact Stats", value: 2 },
-    { label: "Programs", value: 3 },
-    { label: "Locations", value: 4 },
-    { label: "Testimonials", value: 5 },
-  ];
+  const tabs = [{ label: "Hero Section", value: 0 }];
+
+  // Build and debounce the preview hero override
+  const liveHeroOverride = useMemo(
+    () => ({
+      title: impactReportForm.hero.title,
+      subtitle: impactReportForm.hero.subtitle,
+      year: impactReportForm.hero.year,
+      tagline: impactReportForm.hero.tagline,
+      titleColor: impactReportForm.hero.titleColor,
+      subtitleColor: impactReportForm.hero.subtitleColor,
+      yearColor: impactReportForm.hero.yearColor,
+      taglineColor: impactReportForm.hero.taglineColor,
+      primaryCta: {
+        label: impactReportForm.hero.primaryCtaLabel,
+        href: impactReportForm.hero.primaryCtaHref,
+      },
+      secondaryCta: {
+        label: impactReportForm.hero.secondaryCtaLabel,
+        href: impactReportForm.hero.secondaryCtaHref,
+      },
+      primaryCtaColor: impactReportForm.hero.primaryCtaColor,
+      secondaryCtaColor: impactReportForm.hero.secondaryCtaColor,
+      bubbles: impactReportForm.hero.bubblesCsv
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+      backgroundColor: composeGradient(
+        impactReportForm.hero.degree,
+        impactReportForm.hero.color1,
+        impactReportForm.hero.color2,
+        impactReportForm.hero.gradientOpacity,
+      ),
+      backgroundImage:
+        impactReportForm.hero.backgroundImagePreview ||
+        impactReportForm.hero.backgroundImageUrl ||
+        null,
+      backgroundImageGrayscale: impactReportForm.hero.backgroundGrayscale,
+    }),
+    [impactReportForm.hero],
+  );
+
+  const debouncedHeroOverride = useDebouncedValue(liveHeroOverride, 300);
 
   return (
     <ScreenGrid>
@@ -1049,34 +1184,10 @@ function ImpactReportCustomizationPage() {
                       transition: "box-shadow 0.3s ease",
                     }}
                   >
-                    <HeroSection
+                    <MemoHeroSection
                       disableFetch
-                      heroOverride={{
-                        title: impactReportForm.hero.title,
-                        subtitle: impactReportForm.hero.subtitle,
-                        year: impactReportForm.hero.year,
-                        tagline: impactReportForm.hero.tagline,
-                        primaryCta: {
-                          label: impactReportForm.hero.primaryCtaLabel,
-                          href: impactReportForm.hero.primaryCtaHref,
-                        },
-                        secondaryCta: {
-                          label: impactReportForm.hero.secondaryCtaLabel,
-                          href: impactReportForm.hero.secondaryCtaHref,
-                        },
-                        bubbles: impactReportForm.hero.bubblesCsv
-                          .split(",")
-                          .map((s) => s.trim())
-                          .filter(Boolean),
-                        backgroundColor: composeGradient(
-                          impactReportForm.hero.degree,
-                          impactReportForm.hero.color1,
-                          impactReportForm.hero.color2,
-                          impactReportForm.hero.gradientOpacity,
-                        ),
-                        backgroundImage:
-                          impactReportForm.hero.backgroundImageUrl ?? null,
-                      }}
+                      disableAnimations
+                      heroOverride={debouncedHeroOverride}
                     />
                   </Box>
                 </PreviewFrame>
@@ -1085,95 +1196,129 @@ function ImpactReportCustomizationPage() {
           </Box>
         </Grid>
 
-        {/* Right column: actions + tabs + forms */}
+        {/* Right column: header + tabs + forms */}
         <Grid item xs={12} md={4}>
-          {/* Action buttons */}
-          <CustomPaper sx={{ p: { xs: 2, sm: 2 }, mb: 3 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: { xs: "center", sm: "space-between" },
-                flexDirection: { xs: "column", sm: "row" },
-                gap: 2,
-              }}
-            >
+          {/* Sticky group: actions box then tabs box */}
+          <Box
+            sx={{
+              position: "sticky",
+              top: 16,
+              zIndex: 5,
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+              mb: 2,
+            }}
+          >
+            <CustomPaper sx={{ p: { xs: 1.5, sm: 2 } }}>
               <Box
                 sx={{
                   display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 2,
                   flexWrap: "wrap",
-                  justifyContent: "center",
                 }}
               >
-                <Tooltip
-                  title={
-                    heroUploadPct !== null
-                      ? "Please wait for the upload to finish"
-                      : ""
-                  }
-                  disableHoverListener={heroUploadPct === null}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.5,
+                    flexWrap: "wrap",
+                  }}
                 >
-                  <span>
-                    <Button
-                      variant="contained"
-                      startIcon={<SaveIcon />}
-                      onClick={handleSave}
-                      disabled={isSubmitting || heroUploadPct !== null}
-                      sx={{
-                        bgcolor: COLORS.gogo_blue,
-                        "&:hover": { bgcolor: "#0066cc" },
-                        minWidth: { xs: "100%", sm: "auto" },
-                      }}
-                    >
-                      {isSubmitting ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </span>
-                </Tooltip>
+                  <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
+                    Editor
+                  </Typography>
+                  {isDirty ? (
+                    <Typography variant="body2" color="warning.main">
+                      Unsaved changes
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="rgba(255,255,255,0.7)">
+                      {lastSavedAt
+                        ? `All changes saved · ${lastSavedAt.toLocaleTimeString()}`
+                        : "No recent changes"}
+                    </Typography>
+                  )}
+                </Box>
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <Tooltip
+                    title={
+                      heroUploadPct !== null
+                        ? "Please wait for the upload to finish"
+                        : ""
+                    }
+                    disableHoverListener={heroUploadPct === null}
+                  >
+                    <span>
+                      <Button
+                        variant="contained"
+                        startIcon={<SaveIcon />}
+                        onClick={handleSave}
+                        disabled={isSubmitting || heroUploadPct !== null}
+                        sx={{
+                          bgcolor: COLORS.gogo_blue,
+                          "&:hover": { bgcolor: "#0066cc" },
+                        }}
+                      >
+                        {isSubmitting ? "Saving..." : "Save Changes"}
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    onClick={handleDiscard}
+                    disabled={!isDirty}
+                  >
+                    Discard Changes
+                  </Button>
+                </Box>
               </Box>
-            </Box>
-          </CustomPaper>
-          {/* Save status */}
-          <Box sx={{ mb: 2, textAlign: "center" }}>
-            {isDirty ? (
-              <Typography variant="body2" color="warning.main">
-                Unsaved changes
-              </Typography>
-            ) : (
-              <Typography variant="body2" color="rgba(255,255,255,0.7)">
-                {lastSavedAt
-                  ? `All changes saved · ${lastSavedAt.toLocaleTimeString()}`
-                  : "No recent changes"}
-              </Typography>
-            )}
-          </Box>
-
-          {/* Tabs */}
-          <CustomPaper sx={{ p: 0, overflow: "hidden", mb: 2 }}>
-            <Tabs
-              value={currentTab}
-              onChange={(_, newValue) => setCurrentTab(newValue)}
-              variant="scrollable"
-              scrollButtons="auto"
-              sx={{
-                borderBottom: "1px solid rgba(255,255,255,0.1)",
-                "& .MuiTab-root": {
-                  color: "rgba(255,255,255,0.7)",
-                  minWidth: { xs: "auto", sm: 120 },
-                  fontSize: { xs: "0.75rem", sm: "0.875rem" },
-                  "&.Mui-selected": {
-                    color: COLORS.gogo_blue,
+            </CustomPaper>
+            <CustomPaper sx={{ p: 0 }}>
+              <Tabs
+                value={currentTab}
+                onChange={(_, newValue) => {
+                  if (isDirty) {
+                    enqueueSnackbar(
+                      "Save or discard changes before switching tabs",
+                      { variant: "info" },
+                    );
+                    return;
+                  }
+                  setCurrentTab(newValue);
+                }}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{
+                  borderBottom: "1px solid rgba(255,255,255,0.1)",
+                  "& .MuiTab-root": {
+                    color: "rgba(255,255,255,0.7)",
+                    minWidth: { xs: "auto", sm: 120 },
+                    fontSize: { xs: "0.75rem", sm: "0.875rem" },
+                    "&.Mui-selected": {
+                      color: COLORS.gogo_blue,
+                    },
                   },
-                },
-                "& .MuiTabs-indicator": {
-                  backgroundColor: COLORS.gogo_blue,
-                },
-              }}
-            >
-              {tabs.map((tab) => (
-                <Tab key={tab.value} label={tab.label} value={tab.value} />
-              ))}
-            </Tabs>
-          </CustomPaper>
+                  "& .MuiTabs-indicator": {
+                    backgroundColor: COLORS.gogo_blue,
+                  },
+                }}
+              >
+                {tabs.map((tab) => (
+                  <Tab
+                    key={tab.value}
+                    label={tab.label}
+                    value={tab.value}
+                    disabled={isDirty}
+                  />
+                ))}
+              </Tabs>
+            </CustomPaper>
+          </Box>
 
           {/* Tab content */}
           <CustomPaper
@@ -1242,6 +1387,32 @@ function ImpactReportCustomizationPage() {
                       }
                       fullWidth
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        setColorPickerField("titleColor");
+                        setColorPickerAnchor(e.currentTarget as HTMLElement);
+                      }}
+                      sx={{
+                        mt: 1,
+                        borderColor: "rgba(255,255,255,0.3)",
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 3,
+                          background:
+                            impactReportForm.hero.titleColor || "#ffffff",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                        }}
+                      />
+                      &nbsp;Text color
+                    </Button>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <CustomTextField
@@ -1252,6 +1423,32 @@ function ImpactReportCustomizationPage() {
                       }
                       fullWidth
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        setColorPickerField("subtitleColor");
+                        setColorPickerAnchor(e.currentTarget as HTMLElement);
+                      }}
+                      sx={{
+                        mt: 1,
+                        borderColor: "rgba(255,255,255,0.3)",
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 3,
+                          background:
+                            impactReportForm.hero.subtitleColor || "#77ddab",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                        }}
+                      />
+                      &nbsp;Text color
+                    </Button>
                   </Grid>
                   <Grid item xs={12} md={4}>
                     <CustomTextField
@@ -1262,8 +1459,34 @@ function ImpactReportCustomizationPage() {
                       }
                       fullWidth
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        setColorPickerField("yearColor");
+                        setColorPickerAnchor(e.currentTarget as HTMLElement);
+                      }}
+                      sx={{
+                        mt: 1,
+                        borderColor: "rgba(255,255,255,0.3)",
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 3,
+                          background:
+                            impactReportForm.hero.yearColor || "#e9bb4d",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                        }}
+                      />
+                      &nbsp;Text color
+                    </Button>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid item xs={12} md={8}>
                     <CustomTextField
                       label="Tagline"
                       value={impactReportForm.hero.tagline}
@@ -1272,8 +1495,35 @@ function ImpactReportCustomizationPage() {
                       }
                       fullWidth
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        setColorPickerField("taglineColor");
+                        setColorPickerAnchor(e.currentTarget as HTMLElement);
+                      }}
+                      sx={{
+                        mt: 1,
+                        borderColor: "rgba(255,255,255,0.3)",
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 3,
+                          background:
+                            impactReportForm.hero.taglineColor ||
+                            COLORS.gogo_green,
+                          border: "1px solid rgba(255,255,255,0.2)",
+                        }}
+                      />
+                      &nbsp;Text color
+                    </Button>
                   </Grid>
-                  <Grid item xs={12} md={4}>
+                  <Grid item xs={12} md={12}>
                     <CustomTextField
                       label="Bubbles (comma separated)"
                       value={impactReportForm.hero.bubblesCsv}
@@ -1307,6 +1557,32 @@ function ImpactReportCustomizationPage() {
                       }
                       fullWidth
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        setColorPickerField("primaryCtaColor");
+                        setColorPickerAnchor(e.currentTarget as HTMLElement);
+                      }}
+                      sx={{
+                        mt: 1,
+                        borderColor: "rgba(255,255,255,0.3)",
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 3,
+                          background:
+                            impactReportForm.hero.primaryCtaColor || "#ffffff",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                        }}
+                      />
+                      &nbsp;Text color
+                    </Button>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <CustomTextField
@@ -1335,6 +1611,33 @@ function ImpactReportCustomizationPage() {
                       }
                       fullWidth
                     />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={(e) => {
+                        setColorPickerField("secondaryCtaColor");
+                        setColorPickerAnchor(e.currentTarget as HTMLElement);
+                      }}
+                      sx={{
+                        mt: 1,
+                        borderColor: "rgba(255,255,255,0.3)",
+                        color: "rgba(255,255,255,0.9)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-block",
+                          width: 16,
+                          height: 16,
+                          borderRadius: 3,
+                          background:
+                            impactReportForm.hero.secondaryCtaColor ||
+                            "#ffffff",
+                          border: "1px solid rgba(255,255,255,0.2)",
+                        }}
+                      />
+                      &nbsp;Text color
+                    </Button>
                   </Grid>
                   <Grid item xs={12} md={6}>
                     <CustomTextField
@@ -1367,8 +1670,16 @@ function ImpactReportCustomizationPage() {
                           Degree
                         </Typography>
                         <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 2 }}
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
                         >
+                          <Typography variant="body2">
+                            {impactReportForm.hero.degree}°
+                          </Typography>
                           <DegreePicker
                             value={impactReportForm.hero.degree}
                             onChange={(deg) =>
@@ -1380,16 +1691,18 @@ function ImpactReportCustomizationPage() {
                             }
                             size={140}
                           />
-                          <Typography variant="body2" sx={{ minWidth: 40 }}>
-                            {impactReportForm.hero.degree}°
-                          </Typography>
                         </Box>
                       </Grid>
                       <Grid
                         item
                         xs={12}
                         md={4}
-                        sx={{ ml: { md: 2 }, mr: { md: -1 } }}
+                        sx={{
+                          ml: { md: 1.5 },
+                          mr: { md: -0.5 },
+                          display: { md: "flex" },
+                          justifyContent: { md: "flex-start" },
+                        }}
                       >
                         <Box
                           sx={{
@@ -1405,24 +1718,37 @@ function ImpactReportCustomizationPage() {
                             >
                               Color 1
                             </Typography>
-                            <input
-                              type="color"
-                              value={impactReportForm.hero.color1}
-                              onChange={(e) =>
-                                handleSectionChange(
-                                  "hero",
-                                  "color1",
-                                  e.target.value,
-                                )
-                              }
-                              style={{
-                                width: 48,
-                                height: 32,
-                                padding: 0,
-                                border: "none",
-                                background: "transparent",
+                            <Button
+                              variant="outlined"
+                              onClick={(e) => {
+                                setColorPickerField("color1");
+                                setColorPickerAnchor(
+                                  e.currentTarget as HTMLElement,
+                                );
                               }}
-                            />
+                              sx={{
+                                mt: 0.5,
+                                minWidth: 48,
+                                px: 1,
+                                borderColor: "rgba(255,255,255,0.3)",
+                                color: "rgba(255,255,255,0.9)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: 3,
+                                  background: impactReportForm.hero.color1,
+                                  border: "1px solid rgba(255,255,255,0.2)",
+                                }}
+                              />
+                              Pick
+                            </Button>
                           </Box>
                           <Box>
                             <Typography
@@ -1431,28 +1757,41 @@ function ImpactReportCustomizationPage() {
                             >
                               Color 2
                             </Typography>
-                            <input
-                              type="color"
-                              value={impactReportForm.hero.color2}
-                              onChange={(e) =>
-                                handleSectionChange(
-                                  "hero",
-                                  "color2",
-                                  e.target.value,
-                                )
-                              }
-                              style={{
-                                width: 48,
-                                height: 32,
-                                padding: 0,
-                                border: "none",
-                                background: "transparent",
+                            <Button
+                              variant="outlined"
+                              onClick={(e) => {
+                                setColorPickerField("color2");
+                                setColorPickerAnchor(
+                                  e.currentTarget as HTMLElement,
+                                );
                               }}
-                            />
+                              sx={{
+                                mt: 0.5,
+                                minWidth: 48,
+                                px: 1,
+                                borderColor: "rgba(255,255,255,0.3)",
+                                color: "rgba(255,255,255,0.9)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  width: 18,
+                                  height: 18,
+                                  borderRadius: 3,
+                                  background: impactReportForm.hero.color2,
+                                  border: "1px solid rgba(255,255,255,0.2)",
+                                }}
+                              />
+                              Pick
+                            </Button>
                           </Box>
                         </Box>
                       </Grid>
-                      <Grid item xs={12} md={4} sx={{ ml: { md: -1 } }}>
+                      <Grid item xs={12} md={4} sx={{ ml: { md: -2 } }}>
                         <Box
                           sx={{
                             width: 140,
@@ -1470,6 +1809,19 @@ function ImpactReportCustomizationPage() {
                       </Grid>
                     </Grid>
                   </Grid>
+                  <ColorPickerPopover
+                    open={openColorPicker}
+                    anchorEl={colorPickerAnchor}
+                    onClose={() => {
+                      setColorPickerAnchor(null);
+                      setColorPickerField(null);
+                    }}
+                    value={currentPickerColor}
+                    onChange={(val) => {
+                      if (!colorPickerField) return;
+                      handleSectionChange("hero", colorPickerField, val);
+                    }}
+                  />
                   <Grid item xs={12} md={9}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                       <Typography
@@ -1541,6 +1893,7 @@ function ImpactReportCustomizationPage() {
                               ...prev.hero,
                               backgroundImageUrl: null,
                               backgroundImagePreview: null,
+                              backgroundImageFile: null,
                             },
                           }));
                           setIsDirty(true);
@@ -1587,29 +1940,53 @@ function ImpactReportCustomizationPage() {
                                 width: "100%",
                                 height: "100%",
                                 objectFit: "cover",
+                                filter: impactReportForm.hero
+                                  .backgroundGrayscale
+                                  ? "grayscale(1)"
+                                  : undefined,
                               }}
                             />
                           </Box>
                         )}
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={impactReportForm.hero.backgroundGrayscale}
+                            onChange={(e) =>
+                              handleSectionChange(
+                                "hero",
+                                "backgroundGrayscale",
+                                e.target.checked,
+                              )
+                            }
+                            sx={{
+                              "& .MuiSwitch-switchBase.Mui-checked": {
+                                color: COLORS.gogo_blue,
+                              },
+                              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                                {
+                                  backgroundColor: COLORS.gogo_blue,
+                                },
+                            }}
+                          />
+                        }
+                        label="Render background image in grayscale (gradient and text stay color)"
+                        sx={{ color: "white" }}
+                      />
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "rgba(255,255,255,0.7)",
+                          display: "block",
+                        }}
+                      >
+                        Note: The preview frame is approximate. The background
+                        image may not align exactly with other elements on the
+                        final page.
+                      </Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={12} md={6}>
-                    <CustomTextField
-                      label="Background Image Alt"
-                      value={impactReportForm.hero.backgroundImageAlt}
-                      onChange={(e) =>
-                        handleSectionChange(
-                          "hero",
-                          "backgroundImageAlt",
-                          e.target.value,
-                        )
-                      }
-                      error={Boolean(errors.heroAlt)}
-                      helperText={errors.heroAlt}
-                      fullWidth
-                    />
-                  </Grid>
-                  {/* Background image is always 100% opacity; slider removed */}
+                  {/* Background image is always 100% opacity; no alt field */}
 
                   {/* Accessibility */}
                   <Grid item xs={12}>
@@ -1633,760 +2010,15 @@ function ImpactReportCustomizationPage() {
               </Box>
             )}
 
-            {/* Mission Section */}
-            {currentTab === 1 && (
-              <Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 3,
-                  }}
-                >
-                  <Typography variant="h5">Mission Section</Typography>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={impactReportForm.mission.enabled}
-                        onChange={(e) =>
-                          handleSectionChange(
-                            "mission",
-                            "enabled",
-                            e.target.checked,
-                          )
-                        }
-                        sx={{
-                          "& .MuiSwitch-switchBase.Mui-checked": {
-                            color: COLORS.gogo_blue,
-                          },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                            {
-                              backgroundColor: COLORS.gogo_blue,
-                            },
-                        }}
-                      />
-                    }
-                    label="Enable Section"
-                    sx={{ color: "white" }}
-                  />
-                </Box>
-                <Divider sx={{ mb: 3, bgcolor: "rgba(255,255,255,0.1)" }} />
+            {/* Mission Section removed */}
 
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <CustomTextField
-                      label="Section Title"
-                      value={impactReportForm.mission.title}
-                      onChange={(e) =>
-                        handleSectionChange("mission", "title", e.target.value)
-                      }
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <CustomTextField
-                      label="Mission Content"
-                      value={impactReportForm.mission.content}
-                      onChange={(e) =>
-                        handleSectionChange(
-                          "mission",
-                          "content",
-                          e.target.value,
-                        )
-                      }
-                      fullWidth
-                      multiline
-                      rows={4}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      Mission Image
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) =>
-                          handleImageUpload("mission", "image", e)
-                        }
-                        style={{ display: "none" }}
-                        ref={(el) =>
-                          (fileInputRefs.current["mission-img"] = el)
-                        }
-                      />
-                      <Button
-                        variant="outlined"
-                        startIcon={<CloudUploadIcon />}
-                        onClick={() =>
-                          fileInputRefs.current["mission-img"]?.click()
-                        }
-                      >
-                        Upload Image
-                      </Button>
-                      {impactReportForm.mission.imagePreview && (
-                        <Box
-                          sx={{
-                            width: 100,
-                            height: 60,
-                            overflow: "hidden",
-                            borderRadius: 1,
-                          }}
-                        >
-                          <img
-                            src={impactReportForm.mission.imagePreview}
-                            alt="Mission preview"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        </Box>
-                      )}
-                    </Box>
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
+            {/* Impact Stats Section removed */}
 
-            {/* Impact Stats Section */}
-            {currentTab === 2 && (
-              <Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 3,
-                  }}
-                >
-                  <Typography variant="h5">Impact Statistics</Typography>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={impactReportForm.impact.enabled}
-                        onChange={(e) =>
-                          handleSectionChange(
-                            "impact",
-                            "enabled",
-                            e.target.checked,
-                          )
-                        }
-                        sx={{
-                          "& .MuiSwitch-switchBase.Mui-checked": {
-                            color: COLORS.gogo_blue,
-                          },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                            {
-                              backgroundColor: COLORS.gogo_blue,
-                            },
-                        }}
-                      />
-                    }
-                    label="Enable Section"
-                    sx={{ color: "white" }}
-                  />
-                </Box>
-                <Divider sx={{ mb: 3, bgcolor: "rgba(255,255,255,0.1)" }} />
+            {/* Programs Section removed */}
 
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <CustomTextField
-                      label="Section Title"
-                      value={impactReportForm.impact.title}
-                      onChange={(e) =>
-                        handleSectionChange("impact", "title", e.target.value)
-                      }
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 2,
-                      }}
-                    >
-                      <Typography variant="h6">Statistics</Typography>
-                      <Button
-                        startIcon={<AddIcon />}
-                        onClick={handleAddStat}
-                        variant="outlined"
-                        size="small"
-                      >
-                        Add Statistic
-                      </Button>
-                    </Box>
-                    {impactReportForm.impact.stats.map((stat, index) => (
-                      <Card
-                        key={stat.id}
-                        sx={{ mb: 2, bgcolor: "rgba(255,255,255,0.05)" }}
-                      >
-                        <CardContent>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              mb: 2,
-                            }}
-                          >
-                            <Typography variant="h6">
-                              Statistic {index + 1}
-                            </Typography>
-                            <IconButton
-                              onClick={() => handleRemoveStat(index)}
-                              sx={{ color: "rgba(255,255,255,0.7)" }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
-                          <Grid container spacing={2}>
-                            <Grid item xs={6}>
-                              <CustomTextField
-                                label="Number"
-                                value={stat.number}
-                                onChange={(e) =>
-                                  handleStatChange(
-                                    index,
-                                    "number",
-                                    e.target.value,
-                                  )
-                                }
-                                fullWidth
-                              />
-                            </Grid>
-                            <Grid item xs={6}>
-                              <CustomTextField
-                                label="Label"
-                                value={stat.label}
-                                onChange={(e) =>
-                                  handleStatChange(
-                                    index,
-                                    "label",
-                                    e.target.value,
-                                  )
-                                }
-                                fullWidth
-                              />
-                            </Grid>
-                          </Grid>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
+            {/* Locations Section removed */}
 
-            {/* Programs Section */}
-            {currentTab === 3 && (
-              <Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 3,
-                  }}
-                >
-                  <Typography variant="h5">Programs Section</Typography>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={impactReportForm.programs.enabled}
-                        onChange={(e) =>
-                          handleSectionChange(
-                            "programs",
-                            "enabled",
-                            e.target.checked,
-                          )
-                        }
-                        sx={{
-                          "& .MuiSwitch-switchBase.Mui-checked": {
-                            color: COLORS.gogo_blue,
-                          },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                            {
-                              backgroundColor: COLORS.gogo_blue,
-                            },
-                        }}
-                      />
-                    }
-                    label="Enable Section"
-                    sx={{ color: "white" }}
-                  />
-                </Box>
-                <Divider sx={{ mb: 3, bgcolor: "rgba(255,255,255,0.1)" }} />
-
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <CustomTextField
-                      label="Section Title"
-                      value={impactReportForm.programs.title}
-                      onChange={(e) =>
-                        handleSectionChange("programs", "title", e.target.value)
-                      }
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 2,
-                      }}
-                    >
-                      <Typography variant="h6">Programs</Typography>
-                      <Button
-                        startIcon={<AddIcon />}
-                        onClick={handleAddProgram}
-                        variant="outlined"
-                        size="small"
-                      >
-                        Add Program
-                      </Button>
-                    </Box>
-                    {impactReportForm.programs.programs.map(
-                      (program, index) => (
-                        <Card
-                          key={program.id}
-                          sx={{ mb: 2, bgcolor: "rgba(255,255,255,0.05)" }}
-                        >
-                          <CardContent>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                mb: 2,
-                              }}
-                            >
-                              <Typography variant="h6">
-                                Program {index + 1}
-                              </Typography>
-                              <IconButton
-                                onClick={() => handleRemoveProgram(index)}
-                                sx={{ color: "rgba(255,255,255,0.7)" }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
-                            <Grid container spacing={2}>
-                              <Grid item xs={12} md={6}>
-                                <CustomTextField
-                                  label="Program Name"
-                                  value={program.name}
-                                  onChange={(e) =>
-                                    handleProgramChange(
-                                      index,
-                                      "name",
-                                      e.target.value,
-                                    )
-                                  }
-                                  fullWidth
-                                />
-                              </Grid>
-                              <Grid item xs={12} md={6}>
-                                <CustomTextField
-                                  label="Description"
-                                  value={program.description}
-                                  onChange={(e) =>
-                                    handleProgramChange(
-                                      index,
-                                      "description",
-                                      e.target.value,
-                                    )
-                                  }
-                                  fullWidth
-                                />
-                              </Grid>
-                              <Grid item xs={12}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                  Program Image
-                                </Typography>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 2,
-                                  }}
-                                >
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        const reader = new FileReader();
-                                        reader.onload = (readerEvent) => {
-                                          handleProgramChange(
-                                            index,
-                                            "image",
-                                            file,
-                                          );
-                                          handleProgramChange(
-                                            index,
-                                            "imagePreview",
-                                            readerEvent.target
-                                              ?.result as string,
-                                          );
-                                        };
-                                        reader.readAsDataURL(file);
-                                      }
-                                    }}
-                                    style={{ display: "none" }}
-                                    ref={(el) =>
-                                      (fileInputRefs.current[
-                                        `program-${index}`
-                                      ] = el)
-                                    }
-                                  />
-                                  <Button
-                                    variant="outlined"
-                                    startIcon={<CloudUploadIcon />}
-                                    onClick={() =>
-                                      fileInputRefs.current[
-                                        `program-${index}`
-                                      ]?.click()
-                                    }
-                                  >
-                                    Upload Image
-                                  </Button>
-                                  {program.imagePreview && (
-                                    <Box
-                                      sx={{
-                                        width: 100,
-                                        height: 60,
-                                        overflow: "hidden",
-                                        borderRadius: 1,
-                                      }}
-                                    >
-                                      <img
-                                        src={program.imagePreview}
-                                        alt="Program preview"
-                                        style={{
-                                          width: "100%",
-                                          height: "100%",
-                                          objectFit: "cover",
-                                        }}
-                                      />
-                                    </Box>
-                                  )}
-                                </Box>
-                              </Grid>
-                            </Grid>
-                          </CardContent>
-                        </Card>
-                      ),
-                    )}
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-
-            {/* Locations Section */}
-            {currentTab === 4 && (
-              <Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 3,
-                  }}
-                >
-                  <Typography variant="h5">Locations Section</Typography>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={impactReportForm.locations.enabled}
-                        onChange={(e) =>
-                          handleSectionChange(
-                            "locations",
-                            "enabled",
-                            e.target.checked,
-                          )
-                        }
-                        sx={{
-                          "& .MuiSwitch-switchBase.Mui-checked": {
-                            color: COLORS.gogo_blue,
-                          },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                            {
-                              backgroundColor: COLORS.gogo_blue,
-                            },
-                        }}
-                      />
-                    }
-                    label="Enable Section"
-                    sx={{ color: "white" }}
-                  />
-                </Box>
-                <Divider sx={{ mb: 3, bgcolor: "rgba(255,255,255,0.1)" }} />
-
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <CustomTextField
-                      label="Section Title"
-                      value={impactReportForm.locations.title}
-                      onChange={(e) =>
-                        handleSectionChange(
-                          "locations",
-                          "title",
-                          e.target.value,
-                        )
-                      }
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography
-                      variant="body2"
-                      color="rgba(255,255,255,0.7)"
-                      sx={{ mb: 2 }}
-                    >
-                      Locations are currently managed through the main locations
-                      system. This section will display all active locations.
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-
-            {/* Testimonials Section */}
-            {currentTab === 5 && (
-              <Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 3,
-                  }}
-                >
-                  <Typography variant="h5">Testimonials Section</Typography>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={impactReportForm.testimonials.enabled}
-                        onChange={(e) =>
-                          handleSectionChange(
-                            "testimonials",
-                            "enabled",
-                            e.target.checked,
-                          )
-                        }
-                        sx={{
-                          "& .MuiSwitch-switchBase.Mui-checked": {
-                            color: COLORS.gogo_blue,
-                          },
-                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                            {
-                              backgroundColor: COLORS.gogo_blue,
-                            },
-                        }}
-                      />
-                    }
-                    label="Enable Section"
-                    sx={{ color: "white" }}
-                  />
-                </Box>
-                <Divider sx={{ mb: 3, bgcolor: "rgba(255,255,255,0.1)" }} />
-
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <CustomTextField
-                      label="Section Title"
-                      value={impactReportForm.testimonials.title}
-                      onChange={(e) =>
-                        handleSectionChange(
-                          "testimonials",
-                          "title",
-                          e.target.value,
-                        )
-                      }
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 2,
-                      }}
-                    >
-                      <Typography variant="h6">Testimonials</Typography>
-                      <Button
-                        startIcon={<AddIcon />}
-                        onClick={handleAddTestimonial}
-                        variant="outlined"
-                        size="small"
-                      >
-                        Add Testimonial
-                      </Button>
-                    </Box>
-                    {impactReportForm.testimonials.testimonials.map(
-                      (testimonial, index) => (
-                        <Card
-                          key={testimonial.id}
-                          sx={{ mb: 2, bgcolor: "rgba(255,255,255,0.05)" }}
-                        >
-                          <CardContent>
-                            <Box
-                              sx={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                mb: 2,
-                              }}
-                            >
-                              <Typography variant="h6">
-                                Testimonial {index + 1}
-                              </Typography>
-                              <IconButton
-                                onClick={() => handleRemoveTestimonial(index)}
-                                sx={{ color: "rgba(255,255,255,0.7)" }}
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
-                            <Grid container spacing={2}>
-                              <Grid item xs={12} md={4}>
-                                <CustomTextField
-                                  label="Name"
-                                  value={testimonial.name}
-                                  onChange={(e) =>
-                                    handleTestimonialChange(
-                                      index,
-                                      "name",
-                                      e.target.value,
-                                    )
-                                  }
-                                  fullWidth
-                                />
-                              </Grid>
-                              <Grid item xs={12} md={4}>
-                                <CustomTextField
-                                  label="Role"
-                                  value={testimonial.role}
-                                  onChange={(e) =>
-                                    handleTestimonialChange(
-                                      index,
-                                      "role",
-                                      e.target.value,
-                                    )
-                                  }
-                                  fullWidth
-                                />
-                              </Grid>
-                              <Grid item xs={12} md={4}>
-                                <Typography variant="subtitle2" gutterBottom>
-                                  Photo
-                                </Typography>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 2,
-                                  }}
-                                >
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        const reader = new FileReader();
-                                        reader.onload = (readerEvent) => {
-                                          handleTestimonialChange(
-                                            index,
-                                            "image",
-                                            file,
-                                          );
-                                          handleTestimonialChange(
-                                            index,
-                                            "imagePreview",
-                                            readerEvent.target
-                                              ?.result as string,
-                                          );
-                                        };
-                                        reader.readAsDataURL(file);
-                                      }
-                                    }}
-                                    style={{ display: "none" }}
-                                    ref={(el) =>
-                                      (fileInputRefs.current[
-                                        `testimonial-${index}`
-                                      ] = el)
-                                    }
-                                  />
-                                  <Button
-                                    variant="outlined"
-                                    startIcon={<CloudUploadIcon />}
-                                    onClick={() =>
-                                      fileInputRefs.current[
-                                        `testimonial-${index}`
-                                      ]?.click()
-                                    }
-                                  >
-                                    Upload Photo
-                                  </Button>
-                                  {testimonial.imagePreview && (
-                                    <Box
-                                      sx={{
-                                        width: 50,
-                                        height: 50,
-                                        overflow: "hidden",
-                                        borderRadius: "50%",
-                                      }}
-                                    >
-                                      <img
-                                        src={testimonial.imagePreview}
-                                        alt="Testimonial preview"
-                                        style={{
-                                          width: "100%",
-                                          height: "100%",
-                                          objectFit: "cover",
-                                        }}
-                                      />
-                                    </Box>
-                                  )}
-                                </Box>
-                              </Grid>
-                              <Grid item xs={12}>
-                                <CustomTextField
-                                  label="Testimonial Content"
-                                  value={testimonial.content}
-                                  onChange={(e) =>
-                                    handleTestimonialChange(
-                                      index,
-                                      "content",
-                                      e.target.value,
-                                    )
-                                  }
-                                  fullWidth
-                                  multiline
-                                  rows={3}
-                                />
-                              </Grid>
-                            </Grid>
-                          </CardContent>
-                        </Card>
-                      ),
-                    )}
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
+            {/* Testimonials Section removed */}
           </CustomPaper>
         </Grid>
 
@@ -2404,3 +2036,4 @@ function ImpactReportCustomizationPage() {
 }
 
 export default ImpactReportCustomizationPage;
+

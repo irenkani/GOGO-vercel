@@ -13,8 +13,13 @@ export interface HeroCta {
 export interface HeroContent {
   backgroundColor?: string | null;
   backgroundImage?: string | null;
-  backgroundImageAlt?: string | null;
-  backgroundOpacity?: number;
+  backgroundImageGrayscale?: boolean | null;
+  titleColor?: string | null;
+  subtitleColor?: string | null;
+  yearColor?: string | null;
+  taglineColor?: string | null;
+  primaryCtaColor?: string | null;
+  secondaryCtaColor?: string | null;
   title?: string;
   subtitle?: string;
   year?: string;
