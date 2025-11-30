@@ -11,6 +11,8 @@ export interface HeroCta {
 // Removed background video and overlay support
 
 export interface HeroContent {
+  // Background - Full CSS gradient string
+  backgroundGradient?: string | null;
   backgroundColor?: string | null;
   backgroundImage?: string | null;
   backgroundImageGrayscale?: boolean | null;
@@ -20,6 +22,17 @@ export interface HeroContent {
   taglineColor?: string | null;
   primaryCtaColor?: string | null;
   secondaryCtaColor?: string | null;
+  // CTA button background colors
+  primaryCtaBgColor?: string | null;
+  primaryCtaHoverBgColor?: string | null;
+  secondaryCtaBgColor?: string | null;
+  secondaryCtaHoverBgColor?: string | null;
+  // Title underline color
+  titleUnderlineColor?: string | null;
+  // Bubble/chip styling
+  bubbleTextColor?: string | null;
+  bubbleBgColor?: string | null;
+  bubbleBorderColor?: string | null;
   title?: string;
   subtitle?: string;
   year?: string;

@@ -24,21 +24,8 @@ import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import MissionStatement from '../components/MissionStatement';
 import COLORS from '../../assets/colors.ts';
 import { fetchMissionContent, type MissionContent } from '../services/impact.api';
-import photo1 from '../../assets/missionPhotos/Photo1.jpg';
-import photo2 from '../../assets/missionPhotos/Photo2.jpg';
-import photo3 from '../../assets/missionPhotos/Photo3.jpg';
-import photo4 from '../../assets/missionPhotos/Photo4.jpg';
-import photo5 from '../../assets/missionPhotos/Photo5.jpg';
-import photo6 from '../../assets/missionPhotos/Photo6.jpg';
-import photo7 from '../../assets/missionPhotos/Photo7.jpg';
-import photo8 from '../../assets/missionPhotos/Photo8.jpg';
-import photo9 from '../../assets/missionPhotos/Photo9.jpg';
-import photo10 from '../../assets/missionPhotos/Photo10.jpg';
-import photo11 from '../../assets/missionPhotos/Photo11.jpg';
-import photo12 from '../../assets/missionPhotos/Photo12.jpg';
-import photo13 from '../../assets/missionPhotos/Photo13.jpg';
-import photo14 from '../../assets/missionPhotos/Photo14.jpg';
 import EnhancedLeafletMap from '../components/map/EnhancedLeafletMap';
+import { getImpactIconByKey } from '../components/IconSelector';
 
 const ICON_COMPONENTS: Record<string, React.ReactNode> = {
   musicNote: <MusicNoteIcon />,
@@ -56,8 +43,18 @@ const ICON_COMPONENTS: Record<string, React.ReactNode> = {
   directionsRun: <DirectionsRunIcon />,
 };
 
-const getIconByKey = (key?: string | null) =>
-  (key && ICON_COMPONENTS[key]) || null;
+const getIconByKey = (key?: string | null): React.ReactNode => {
+  if (!key) return null;
+  // First check the local ICON_COMPONENTS for backwards compatibility
+  if (ICON_COMPONENTS[key]) return ICON_COMPONENTS[key];
+  // Then check the full IMPACT_ICON_LIBRARY
+  const iconDef = getImpactIconByKey(key);
+  if (iconDef) {
+    const IconComponent = iconDef.Icon;
+    return <IconComponent />;
+  }
+  return null;
+};
 
 // Animations
 const pulseEqualizer = keyframes`
@@ -233,9 +230,9 @@ const AtGlanceLabel = styled.div<{ $color?: string | null }>`
   }
 `;
 
-const StatItem = styled.div<{ $borderColor?: string }>`
+const StatItem = styled.div<{ $borderColor?: string; $bgColor?: string; $borderWidth?: number }>`
   position: relative;
-  background: rgba(25, 25, 25, 0.6);
+  background: ${(p) => p.$bgColor || 'rgba(25, 25, 25, 0.6)'};
   border-radius: 12px;
   padding: 2rem;
   text-align: center;
@@ -252,7 +249,7 @@ const StatItem = styled.div<{ $borderColor?: string }>`
     position: absolute;
     top: 0;
     left: 0;
-    width: 4px;
+    width: ${(p) => p.$borderWidth ?? 4}px;
     height: 100%;
     background: ${(p) => p.$borderColor || COLORS.gogo_green};
     transition: width 0.3s ease, opacity 0.3s ease;
@@ -334,6 +331,10 @@ const EqualizerBar = styled.div<{ $color?: string; $animate?: boolean }>`
         `
       : css`
           animation: ${pulseEqualizer} ease-in-out infinite;
+          animation-play-state: paused;
+          ${StatItem}:hover & {
+            animation-play-state: running;
+          }
         `};
 
   &:nth-child(1) {
@@ -413,7 +414,9 @@ const ModalCard = styled.div`
   border-radius: 12px;
   padding: 20px;
   text-align: center;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   backdrop-filter: blur(6px);
 
   &:hover {
@@ -473,7 +476,7 @@ const ShineOverlay = styled.div`
   overflow: hidden;
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     top: -50%;
     left: -30%;
@@ -491,7 +494,10 @@ const ShineOverlay = styled.div`
 `;
 
 function MissionSection(
-  props: { previewMode?: boolean; missionOverride?: Partial<MissionContent> } = {},
+  props: {
+    previewMode?: boolean;
+    missionOverride?: Partial<MissionContent>;
+  } = {},
 ): JSX.Element {
   const { previewMode = false, missionOverride } = props;
   const [inView, setInView] = useState(true);
@@ -521,14 +527,17 @@ function MissionSection(
         setLoading(false);
       });
     } else if (missionOverride) {
-      setMission((prev) => ({ ...(prev ?? {}), ...(missionOverride as MissionContent) }));
+      setMission((prev) => ({
+        ...(prev ?? {}),
+        ...(missionOverride as MissionContent),
+      }));
       setLoading(false);
     }
   }, [previewMode, missionOverride]);
 
   // Artistic disciplines mapped to vector icons
   const disciplineNameIcons: Record<string, React.ReactNode> = {
-    'Music Production': <GraphicEqIcon />,
+    "Music Production": <GraphicEqIcon />,
     Guitar: <MusicNoteIcon />,
     Drums: <AudiotrackIcon />,
     Piano: <PianoIcon />,
@@ -537,171 +546,36 @@ function MissionSection(
     DJing: <GraphicEqIcon />,
     Songwriting: <LibraryMusicIcon />,
     Dance: <DirectionsRunIcon />,
-    'Visual Art': <BrushIcon />,
-    'Digital Art': <ComputerIcon />,
-    'Spoken Word': <RecordVoiceOverIcon />,
+    "Visual Art": <BrushIcon />,
+    "Digital Art": <ComputerIcon />,
+    "Spoken Word": <RecordVoiceOverIcon />,
     Theater: <TheaterComedyIcon />,
-    'Sound Engineering': <EqualizerIcon />,
-    'Brass Instruments': <MusicNoteIcon />,
-    'Woodwind Instruments': <MusicNoteIcon />,
+    "Sound Engineering": <EqualizerIcon />,
+    "Brass Instruments": <MusicNoteIcon />,
+    "Woodwind Instruments": <MusicNoteIcon />,
     Strings: <MusicNoteIcon />,
   };
 
   // Fallback disciplines dataset for modal (used if none provided)
   const fallbackDisciplinesData = [
-    { name: 'Music Production', students: 78, projects: 120 },
-    { name: 'Guitar', students: 95, projects: 150 },
-    { name: 'Drums', students: 65, projects: 85 },
-    { name: 'Piano', students: 70, projects: 110 },
-    { name: 'Vocals', students: 85, projects: 130 },
-    { name: 'Bass', students: 55, projects: 75 },
-    { name: 'DJing', students: 60, projects: 95 },
-    { name: 'Songwriting', students: 72, projects: 140 },
-    { name: 'Dance', students: 68, projects: 90 },
-    { name: 'Visual Art', students: 63, projects: 105 },
-    { name: 'Digital Art', students: 58, projects: 80 },
-    { name: 'Spoken Word', students: 50, projects: 85 },
-    { name: 'Theater', students: 45, projects: 60 },
-    { name: 'Sound Engineering', students: 40, projects: 65 },
-    { name: 'Brass Instruments', students: 35, projects: 50 },
-    { name: 'Woodwind Instruments', students: 30, projects: 45 },
-    { name: 'Strings', students: 25, projects: 40 },
+    { name: "Music Production", students: 78, projects: 120 },
+    { name: "Guitar", students: 95, projects: 150 },
+    { name: "Drums", students: 65, projects: 85 },
+    { name: "Piano", students: 70, projects: 110 },
+    { name: "Vocals", students: 85, projects: 130 },
+    { name: "Bass", students: 55, projects: 75 },
+    { name: "DJing", students: 60, projects: 95 },
+    { name: "Songwriting", students: 72, projects: 140 },
+    { name: "Dance", students: 68, projects: 90 },
+    { name: "Visual Art", students: 63, projects: 105 },
+    { name: "Digital Art", students: 58, projects: 80 },
+    { name: "Spoken Word", students: 50, projects: 85 },
+    { name: "Theater", students: 45, projects: 60 },
+    { name: "Sound Engineering", students: 40, projects: 65 },
+    { name: "Brass Instruments", students: 35, projects: 50 },
+    { name: "Woodwind Instruments", students: 30, projects: 45 },
+    { name: "Strings", students: 25, projects: 40 },
   ];
-
-  if (error) {
-    return (
-      <div style={{ padding: '4rem', textAlign: 'center', color: 'rgba(255,255,255,0.7)' }}>
-        <h3>Failed to load impact report data</h3>
-        <p>Please try refreshing the page.</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return <></>; // Or a loading spinner
-  }
-
-  const missionHidden =
-    mission &&
-    (((mission as any)?.visible === false) ||
-      ((mission as any)?.enabled === false));
-
-  const textAlign =
-    (mission?.textAlign as 'left' | 'center' | 'right') ?? 'center';
-  const layoutVariant =
-    mission?.layoutVariant === 'default' ? 'default' : 'ticket';
-  const animationsEnabled = mission?.animationsEnabled !== false;
-
-  // Compute composed background from gradient + image
-  const isValidGradient = (s?: string | null) =>
-    !!s && !/undefined/i.test(String(s)) && /linear-gradient\(/i.test(String(s));
-  const gradientOk = isValidGradient(mission?.backgroundColor);
-  const gradientBackground = gradientOk
-    ? (mission?.backgroundColor as string)
-    : undefined;
-  const sectionBackground = gradientBackground;
-
-  // Stats from API/override or default
-  const disciplinesModal =
-    (mission?.modals ?? undefined)?.find((m) => m?.id === 'disciplines') ?? null;
-  const statsSource =
-    mission?.stats && mission.stats.length > 0
-      ? mission.stats.filter((s) => s.visible !== false)
-      : []; // No default fallback stats if empty
-
-  const getActionForStatId = (id: string) => {
-    switch (id) {
-      case 'students': return 'openStudentMusicModal';
-      case 'mentors': return 'openMentorMusicModal';
-      case 'sites': return 'openMapModal';
-      case 'disciplines': return 'openDisciplinesModal';
-      default: return 'none';
-    }
-  };
-
-  const computedStats = statsSource.map((s, idx) => {
-    const useModalCount = s.numberSource === 'modalItemsLength';
-    const displayNumber =
-      useModalCount && disciplinesModal?.items
-        ? disciplinesModal.items.length
-        : s.number ?? '';
-    
-    // Force action based on ID if not explicitly set to something else
-    const effectiveAction = s.action && s.action !== 'none' 
-      ? s.action 
-      : getActionForStatId(s.id);
-
-    return {
-      ...s,
-      action: effectiveAction,
-      delay: idx * 0.2,
-      displayNumber,
-    };
-  });
-
-  const statsEqualizerConfig =
-    mission?.statsEqualizer ?? { enabled: true, barCount: 4 };
-  const showEqualizer = statsEqualizerConfig.enabled !== false;
-  const equalizerBarCount = Math.max(
-    1,
-    Math.min(24, statsEqualizerConfig.barCount ?? 4),
-  );
-  const statsTitleText = mission?.statsTitle || 'At a Glance';
-  const statsTitleColor = mission?.statsTitleColor || 'rgba(255,255,255,0.7)';
-
-  const getStaticEqualizerHeight = (statIndex: number, barIndex: number) =>
-    40 + (((statIndex + barIndex) % 5) * 10);
-
-  const badgeIconNode = (() => {
-    if (mission?.badgeIcon?.type === 'iconKey') {
-      return (
-        getIconByKey(mission.badgeIcon.value) ??
-        mission.badgeIcon.value ??
-        '♫'
-      );
-    }
-    if (mission?.badgeIcon?.value) {
-      return mission.badgeIcon.value;
-    }
-    return '♫';
-  })();
-
-  const renderStatIcon = (stat: any) => {
-    const keyed = getIconByKey(stat.iconKey);
-    if (keyed) return keyed;
-    switch (stat.id) {
-      case 'students':
-        return (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 12c2.761 0 5-2.239 5-5S14.761 2 12 2 7 4.239 7 7s2.239 5 5 5zm0 2c-3.866 0-7 2.239-7 5v1h14v-1c0-2.761-3.134-5-7-5z" />
-          </svg>
-        );
-      case 'mentors':
-        return (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M16 11c2.209 0 4-1.791 4-4s-1.791-4-4-4-4 1.791-4 4 1.791 4 4 4zM8 12c2.209 0 4-1.791 4-4S10.209 4 8 4 4 5.791 4 8s1.791 4 4 4zm8 2c-2.673 0-8 1.336-8 4v2h16v-2c0-2.664-5.327-4-8-4zM8 14c-.688 0-1.347.062-1.971.175C3.659 14.66 2 15.867 2 17v3h4v-2c0-1.188.75-2.238 2-2.986-.62-.01-1.31-.014-2-.014z" />
-          </svg>
-        );
-      case 'sites':
-        return (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
-          </svg>
-        );
-      case 'disciplines':
-        return (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3z" />
-          </svg>
-        );
-      default:
-        return <MusicNoteIcon />;
-    }
-  };
-
-  if (missionHidden) {
-    return <></>;
-  }
 
   // Animate modal cards in rows when dialog opens
   useEffect(() => {
@@ -732,8 +606,8 @@ function MissionSection(
       group.els.push(el);
 
       // reset initial state for animation
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(16px) scale(0.98)';
+      el.style.opacity = "0";
+      el.style.transform = "translateY(16px) scale(0.98)";
     });
 
     // Sort by vertical position and animate row by row
@@ -748,31 +622,182 @@ function MissionSection(
         scale: [0.98, 1],
         duration: 500,
         delay: stagger(60, { start: cumulativeDelay }),
-        easing: 'easeOutCubic',
+        easing: "easeOutCubic",
       });
       cumulativeDelay += rowDelay;
     });
   }, [showDisciplines]);
 
+  if (error) {
+    return (
+      <div
+        style={{
+          padding: "4rem",
+          textAlign: "center",
+          color: "rgba(255,255,255,0.7)",
+        }}
+      >
+        <h3>Failed to load impact report data</h3>
+        <p>Please try refreshing the page.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <></>; // Or a loading spinner
+  }
+
+  const missionHidden =
+    mission &&
+    ((mission as any)?.visible === false ||
+      (mission as any)?.enabled === false);
+
+  const textAlign =
+    (mission?.textAlign as "left" | "center" | "right") ?? "center";
+  const layoutVariant =
+    mission?.layoutVariant === "default" ? "default" : "ticket";
+  const animationsEnabled = mission?.animationsEnabled !== false;
+
+  // Compute composed background from gradient + image
+  const isValidGradient = (s?: string | null) =>
+    !!s &&
+    !/undefined/i.test(String(s)) &&
+    /linear-gradient\(/i.test(String(s));
+  const gradientOk = isValidGradient(mission?.backgroundColor);
+  const gradientBackground = gradientOk
+    ? (mission?.backgroundColor as string)
+    : undefined;
+  const sectionBackground = gradientBackground;
+
+  // Stats from API/override or default
+  const disciplinesModal =
+    (mission?.modals ?? undefined)?.find((m) => m?.id === "disciplines") ??
+    null;
+  const statsSource =
+    mission?.stats && mission.stats.length > 0
+      ? mission.stats.filter((s) => s.visible !== false)
+      : []; // No default fallback stats if empty
+
+  const getActionForStatId = (id: string) => {
+    switch (id) {
+      case "students":
+        return "openStudentMusicModal";
+      case "mentors":
+        return "openMentorMusicModal";
+      case "sites":
+        return "openMapModal";
+      case "disciplines":
+        return "openDisciplinesModal";
+      default:
+        return "none";
+    }
+  };
+
+  const computedStats = statsSource.map((s, idx) => {
+    const useModalCount = s.numberSource === "modalItemsLength";
+    const displayNumber =
+      useModalCount && disciplinesModal?.items
+        ? disciplinesModal.items.length
+        : (s.number ?? "");
+
+    // Force action based on ID if not explicitly set to something else
+    const effectiveAction =
+      s.action && s.action !== "none" ? s.action : getActionForStatId(s.id);
+
+    return {
+      ...s,
+      action: effectiveAction,
+      delay: idx * 0.2,
+      displayNumber,
+    };
+  });
+
+  const statsEqualizerConfig = mission?.statsEqualizer ?? {
+    enabled: true,
+    barCount: 4,
+  };
+  const showEqualizer = statsEqualizerConfig.enabled !== false;
+  const equalizerBarCount = Math.max(
+    1,
+    Math.min(24, statsEqualizerConfig.barCount ?? 4),
+  );
+  const statsTitleText = mission?.statsTitle || "At a Glance";
+  const statsTitleColor = mission?.statsTitleColor || "rgba(255,255,255,0.7)";
+  // NEW: Stat card styling
+  const statCardBgColor = mission?.statCardBgColor || undefined;
+  const statCardBorderWidth = mission?.statCardBorderWidth ?? undefined;
+
+  const getStaticEqualizerHeight = (statIndex: number, barIndex: number) =>
+    40 + ((statIndex + barIndex) % 5) * 10;
+
+  const badgeIconNode = (() => {
+    if (mission?.badgeIcon?.type === "iconKey") {
+      return (
+        getIconByKey(mission.badgeIcon.value) ?? mission.badgeIcon.value ?? "♫"
+      );
+    }
+    if (mission?.badgeIcon?.value) {
+      return mission.badgeIcon.value;
+    }
+    return "♫";
+  })();
+
+  const renderStatIcon = (stat: any) => {
+    const keyed = getIconByKey(stat.iconKey);
+    if (keyed) return keyed;
+    switch (stat.id) {
+      case "students":
+        return (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 12c2.761 0 5-2.239 5-5S14.761 2 12 2 7 4.239 7 7s2.239 5 5 5zm0 2c-3.866 0-7 2.239-7 5v1h14v-1c0-2.761-3.134-5-7-5z" />
+          </svg>
+        );
+      case "mentors":
+        return (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 11c2.209 0 4-1.791 4-4s-1.791-4-4-4-4 1.791-4 4 1.791 4 4 4zM8 12c2.209 0 4-1.791 4-4S10.209 4 8 4 4 5.791 4 8s1.791 4 4 4zm8 2c-2.673 0-8 1.336-8 4v2h16v-2c0-2.664-5.327-4-8-4zM8 14c-.688 0-1.347.062-1.971.175C3.659 14.66 2 15.867 2 17v3h4v-2c0-1.188.75-2.238 2-2.986-.62-.01-1.31-.014-2-.014z" />
+          </svg>
+        );
+      case "sites":
+        return (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.14 2 5 5.14 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.86-3.14-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" />
+          </svg>
+        );
+      case "disciplines":
+        return (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3z" />
+          </svg>
+        );
+      default:
+        return <MusicNoteIcon />;
+    }
+  };
+
+  if (missionHidden) {
+    return <></>;
+  }
+
   return (
     <SectionContainer
-      aria-label={mission?.ariaLabel || 'Mission section'}
+      aria-label={mission?.ariaLabel || "Mission section"}
       $textAlign={textAlign}
       $overlayColor1={mission?.overlayColor1}
       $overlayColor2={mission?.overlayColor2}
       $overlayOpacity={mission?.overlayOpacity}
       data-variant={layoutVariant}
       className={`mission-section${
-        animationsEnabled && inView ? ' fade-in' : ''
+        animationsEnabled && inView ? " fade-in" : ""
       }`}
       style={sectionBackground ? { background: sectionBackground } : undefined}
     >
       <Content style={{ textAlign }}>
         <SectionHeader
           style={{
-            flexDirection: textAlign === 'center' ? 'column' : 'row',
-            alignItems: textAlign === 'center' ? 'center' : 'flex-start',
-            gap: textAlign === 'center' ? '1rem' : '2rem',
+            flexDirection: textAlign === "center" ? "column" : "row",
+            alignItems: textAlign === "center" ? "center" : "flex-start",
+            gap: textAlign === "center" ? "1rem" : "2rem",
           }}
         >
           <SectionTitle
@@ -781,7 +806,7 @@ function MissionSection(
             $titleColor={mission?.titleColor}
             $underlineGradient={mission?.titleUnderlineGradient}
           >
-            {mission?.title || 'Our Mission'}
+            {mission?.title || "Our Mission"}
           </SectionTitle>
           <SpotifyBadge
             $bg={mission?.badgeBgColor}
@@ -789,21 +814,11 @@ function MissionSection(
             $textColor={mission?.badgeTextColor}
           >
             <div className="badge-icon">{badgeIconNode}</div>
-            <span>{mission?.badgeLabel || 'Since 2008'}</span>
+            <span>{mission?.badgeLabel || "Since 2008"}</span>
           </SpotifyBadge>
         </SectionHeader>
 
         <MissionStatement
-          topImages={[photo1, photo2, photo3, photo4, photo5, photo6, photo7]}
-          bottomImages={[
-            photo8,
-            photo9,
-            photo10,
-            photo11,
-            photo12,
-            photo13,
-            photo14,
-          ]}
           statement={
             mission?.statementText ||
             "Our mission is to empower youth through music, art and mentorship. Guitars Over Guns offers students from our most vulnerable communities a combination of arts education and mentorship with paid, professional musician mentors to help them overcome hardship, find their voice and reach their potential as tomorrow's leaders. Since 2008, we have served nearly 12,000 students."
@@ -832,43 +847,43 @@ function MissionSection(
           {computedStats.map((stat: any, idx) => {
             const action: string =
               stat?.action ||
-              (stat?.id === 'disciplines' ? 'openDisciplinesModal' : 'none');
+              (stat?.id === "disciplines" ? "openDisciplinesModal" : "none");
 
             const isClickable =
-              action === 'openModal' ||
-              action === 'openDisciplinesModal' ||
-              action === 'openStudentMusicModal' ||
-              action === 'openMentorMusicModal' ||
-              action === 'scrollToMap' ||
-              action === 'openMapModal';
+              action === "openModal" ||
+              action === "openDisciplinesModal" ||
+              action === "openStudentMusicModal" ||
+              action === "openMentorMusicModal" ||
+              action === "scrollToMap" ||
+              action === "openMapModal";
 
             const handleClick = () => {
               if (!isClickable) return;
-              if (action === 'openModal' || action === 'openDisciplinesModal') {
+              if (action === "openModal" || action === "openDisciplinesModal") {
                 setShowDisciplines(true);
                 return;
               }
-              if (action === 'openStudentMusicModal') {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new Event('openStudentMusicModal'));
+              if (action === "openStudentMusicModal") {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new Event("openStudentMusicModal"));
                 }
                 return;
               }
-              if (action === 'openMentorMusicModal') {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new Event('openMentorMusicModal'));
+              if (action === "openMentorMusicModal") {
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new Event("openMentorMusicModal"));
                 }
                 return;
               }
-              if (action === 'scrollToMap') {
-                if (typeof document !== 'undefined') {
-                  const el = document.getElementById('locations');
+              if (action === "scrollToMap") {
+                if (typeof document !== "undefined") {
+                  const el = document.getElementById("locations");
                   if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    el.scrollIntoView({ behavior: "smooth", block: "start" });
                   }
                 }
               }
-              if (action === 'openMapModal') {
+              if (action === "openMapModal") {
                 setShowMap(true);
                 return;
               }
@@ -877,47 +892,54 @@ function MissionSection(
             return (
               <StatItem
                 key={`${stat.id}-${idx}`}
-                className={
-                  animationsEnabled && inView ? 'slide-up' : undefined
-                }
+                className={animationsEnabled && inView ? "slide-up" : undefined}
                 $borderColor={stat.color}
+                $bgColor={statCardBgColor}
+                $borderWidth={statCardBorderWidth}
                 style={{
-                  animationDelay: animationsEnabled ? `${stat.delay}s` : undefined,
+                  animationDelay: animationsEnabled
+                    ? `${stat.delay}s`
+                    : undefined,
                   transitionDelay: animationsEnabled
                     ? `${stat.delay}s`
                     : undefined,
-                  cursor: isClickable ? 'pointer' : undefined,
+                  cursor: isClickable ? "pointer" : undefined,
                 }}
                 onClick={isClickable ? handleClick : undefined}
               >
-              <StatContent>
-                <StatIcon style={{ color: stat.color }}>
-                  {renderStatIcon(stat)}
-                </StatIcon>
-                <StatNumber color={stat.color}>
-                  {stat.displayNumber ?? stat.number ?? ''}
-                </StatNumber>
-                <StatLabel>{stat.label}</StatLabel>
-              </StatContent>
-              {showEqualizer && (
-                <EqualizerBars>
-                  {Array.from({ length: equalizerBarCount }).map((_, barIdx) => (
-                    <EqualizerBar
-                      key={`${stat.id}-bar-${barIdx}`}
-                      $color={stat.color}
-                      $animate={animationsEnabled}
-                      style={{
-                        animationDuration: animationsEnabled
-                          ? `${0.8 + (barIdx % 4) * 0.2}s`
-                          : undefined,
-                        height: animationsEnabled
-                          ? undefined
-                          : `${getStaticEqualizerHeight(idx, barIdx)}%`,
-                      }}
-                    />
-                  ))}
-                </EqualizerBars>
-              )}
+                <StatContent>
+                  <StatIcon style={{ color: stat.color }}>
+                    {renderStatIcon(stat)}
+                  </StatIcon>
+                  <StatNumber color={stat.color}>
+                    {stat.displayNumber ?? stat.number ?? ""}
+                  </StatNumber>
+                  <StatLabel>{stat.label}</StatLabel>
+                </StatContent>
+                {showEqualizer && (
+                  <EqualizerBars>
+                    {Array.from({ length: equalizerBarCount }).map(
+                      (_, barIdx) => (
+                        <EqualizerBar
+                          key={`${stat.id}-bar-${barIdx}`}
+                          $color={stat.color}
+                          $animate={animationsEnabled}
+                          style={{
+                            animationDuration: animationsEnabled
+                              ? `${0.8 + (barIdx % 4) * 0.2}s`
+                              : undefined,
+                            animationDelay: animationsEnabled
+                              ? `-${(barIdx * 0.4) % 2}s`
+                              : undefined,
+                            height: animationsEnabled
+                              ? undefined
+                              : `${getStaticEqualizerHeight(idx, barIdx)}%`,
+                          }}
+                        />
+                      ),
+                    )}
+                  </EqualizerBars>
+                )}
               </StatItem>
             );
           })}
@@ -932,34 +954,34 @@ function MissionSection(
         PaperProps={{
           style: {
             background:
-              'linear-gradient(180deg, rgba(22,22,22,0.96), rgba(10,10,10,0.96))',
-            border: '1px solid rgba(255,255,255,0.08)',
+              "linear-gradient(180deg, rgba(22,22,22,0.96), rgba(10,10,10,0.96))",
+            border: "1px solid rgba(255,255,255,0.08)",
             borderRadius: 16,
             boxShadow:
-              '0 40px 120px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 60px rgba(123,127,209,0.06)',
-            width: 'min(1200px, 92vw)',
-            position: 'relative',
+              "0 40px 120px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 60px rgba(123,127,209,0.06)",
+            width: "min(1200px, 92vw)",
+            position: "relative",
           },
         }}
         BackdropProps={{
           style: {
-            backdropFilter: 'blur(10px)',
-            backgroundColor: 'rgba(0,0,0,0.6)',
+            backdropFilter: "blur(10px)",
+            backgroundColor: "rgba(0,0,0,0.6)",
           },
         }}
       >
-        <DialogTitle sx={{ m: 0, p: 2, color: 'white' }}>
+        <DialogTitle sx={{ m: 0, p: 2, color: "white" }}>
           {disciplinesModal?.title ||
             mission?.modalTitle ||
-            'Artistic Disciplines'}
+            "Artistic Disciplines"}
           <IconButton
             aria-label="close"
             onClick={() => setShowDisciplines(false)}
             sx={{
-              position: 'absolute',
+              position: "absolute",
               right: 8,
               top: 8,
-              color: 'rgba(255,255,255,0.6)',
+              color: "rgba(255,255,255,0.6)",
             }}
           >
             <CloseIcon />
@@ -977,13 +999,11 @@ function MissionSection(
               ? disciplinesModal.items
               : fallbackDisciplinesData
             ).map((d: any) => {
-              const modalIcon =
-                getIconByKey(d?.iconKey) ||
-                disciplineNameIcons[d.name] ||
-                <MusicNoteIcon />;
+              const modalIcon = getIconByKey(d?.iconKey) ||
+                disciplineNameIcons[d.name] || <MusicNoteIcon />;
               return (
                 <ModalCard
-                  key={`discipline-card-${d.name.replace(/\s+/g, '-')}`}
+                  key={`discipline-card-${d.name.replace(/\s+/g, "-")}`}
                   data-disc-card="true"
                 >
                   <ModalIcon>{modalIcon}</ModalIcon>
@@ -1004,32 +1024,41 @@ function MissionSection(
         maxWidth="lg"
         PaperProps={{
           style: {
-             background: '#121212',
-             border: '1px solid rgba(255,255,255,0.1)',
-             borderRadius: 16,
-             overflow: 'hidden'
-          }
+            background: "#121212",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 16,
+            overflow: "hidden",
+          },
         }}
         BackdropProps={{
           style: {
-            backdropFilter: 'blur(10px)',
-            backgroundColor: 'rgba(0,0,0,0.6)',
+            backdropFilter: "blur(10px)",
+            backgroundColor: "rgba(0,0,0,0.6)",
           },
         }}
       >
-        <DialogTitle sx={{ m: 0, p: 2, color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <DialogTitle
+          sx={{
+            m: 0,
+            p: 2,
+            color: "white",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
           Our Locations
-           <IconButton
+          <IconButton
             aria-label="close"
             onClick={() => setShowMap(false)}
             sx={{
-              color: 'rgba(255,255,255,0.6)',
+              color: "rgba(255,255,255,0.6)",
             }}
           >
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: 0, height: '500px' }}>
+        <DialogContent sx={{ p: 0, height: "500px" }}>
           <EnhancedLeafletMap />
         </DialogContent>
       </Dialog>

@@ -174,18 +174,18 @@ const PedalTop = styled.div`
   z-index: 1;
 `;
 
-const Knob = styled.div`
+const Knob = styled.div<{ $rot?: number }>`
   width: 42px;
   height: 42px;
   border-radius: 50%;
   background: conic-gradient(from 180deg, #2a2a2a 0%, #111 100%);
   border: 2px solid #333;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
   position: relative;
-  
+
   // Indicator
   &:after {
-    content: '';
+    content: "";
     position: absolute;
     top: 5px;
     left: 50%;
@@ -193,7 +193,7 @@ const Knob = styled.div`
     height: 40%;
     background: #fff;
     transform-origin: bottom center;
-    transform: translateX(-50%) rotate(${(props: { $rot?: number }) => props.$rot || 0}deg);
+    transform: translateX(-50%) rotate(${(p) => p.$rot || 0}deg);
   }
 `;
 

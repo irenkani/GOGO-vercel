@@ -36,6 +36,7 @@ router.put("/impact/mission", requireAuth, async (req, res, next) => {
     });
 
     const allowedKeys = [
+      "backgroundGradient",
       "backgroundColor",
       "backgroundImage",
       "backgroundImageAlt",
@@ -72,6 +73,11 @@ router.put("/impact/mission", requireAuth, async (req, res, next) => {
       "stats",
       "statsEqualizer",
       "modals",
+      "overlayColor1",
+      "overlayColor2",
+      "overlayOpacity",
+      "statCardBgColor",
+      "statCardBorderWidth",
     ];
 
     const sanitized: Record<string, unknown> = {};
@@ -79,7 +85,7 @@ router.put("/impact/mission", requireAuth, async (req, res, next) => {
       if (key in data) sanitized[key] = (data as any)[key];
     }
     // Drop invalid gradient strings
-    const gradientFields = ["backgroundColor", "titleGradient", "titleUnderlineGradient", "ticketStripeGradient"];
+    const gradientFields = ["backgroundGradient", "backgroundColor", "titleGradient", "titleUnderlineGradient", "ticketStripeGradient"];
     for (const f of gradientFields) {
       const v = sanitized[f];
       if (typeof v === "string" && /undefined/i.test(v)) {

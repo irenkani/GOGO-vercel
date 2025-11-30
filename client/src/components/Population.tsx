@@ -1,45 +1,53 @@
 import React, { useEffect, useState } from 'react';
-import { ResponsivePieCanvas } from '@nivo/pie';
-import styled from 'styled-components';
-import Dialog from '@mui/material/Dialog';
-import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
-import Tooltip from '@mui/material/Tooltip';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { useNavigate } from 'react-router-dom';
-import COLORS from '../../assets/colors';
-import Photo1 from '../../assets/populationPhotos/Photo1.jpg';
-import Photo2 from '../../assets/populationPhotos/Photo2.jpg';
-import Photo3 from '../../assets/populationPhotos/Photo3.jpg';
-import Photo4 from '../../assets/populationPhotos/Photo4.jpg';
-import Photo5 from '../../assets/populationPhotos/Photo5.jpg';
-import Photo6 from '../../assets/populationPhotos/Photo6.jpg';
-import { PopulationContent } from '../services/impact.api';
+import { ResponsivePie } from "@nivo/pie";
+import styled from "styled-components";
+import Dialog from "@mui/material/Dialog";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
+import Tooltip from "@mui/material/Tooltip";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import { useNavigate } from "react-router-dom";
+import COLORS from "../../assets/colors";
+import Photo1 from "../../assets/populationPhotos/Photo1.jpg";
+import Photo2 from "../../assets/populationPhotos/Photo2.jpg";
+import Photo3 from "../../assets/populationPhotos/Photo3.jpg";
+import Photo4 from "../../assets/populationPhotos/Photo4.jpg";
+import Photo5 from "../../assets/populationPhotos/Photo5.jpg";
+import Photo6 from "../../assets/populationPhotos/Photo6.jpg";
+import {
+  PopulationContent,
+  fetchPopulationContent,
+} from "../services/impact.api";
 
 // --- Styled Components ---
 
-const Container = styled.section`
+const Container = styled.section<{
+  $bgGradient?: string;
+  $overlayColor1?: string;
+  $overlayColor2?: string;
+}>`
   width: min(1200px, 92vw);
   margin: 4rem auto;
   padding: 3rem 2rem;
-  background: linear-gradient(180deg, #171717 0%, #0f0f0f 100%);
+  background: ${(p) =>
+    p.$bgGradient || "linear-gradient(180deg, #171717 0%, #0f0f0f 100%)"};
   border-radius: 20px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     background: radial-gradient(
         circle at 10% 15%,
-        ${COLORS.gogo_blue}12,
+        ${(p) => p.$overlayColor1 || `${COLORS.gogo_blue}12`},
         transparent 38%
       ),
       radial-gradient(
         circle at 90% 85%,
-        ${COLORS.gogo_purple}12,
+        ${(p) => p.$overlayColor2 || `${COLORS.gogo_purple}12`},
         transparent 38%
       );
     pointer-events: none;
@@ -52,8 +60,9 @@ const Title = styled.h1<{ $gradient?: string }>`
   margin-bottom: 1.25rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-family: 'Airwaves', sans-serif;
-  background: ${(p) => p.$gradient || `linear-gradient(90deg, #ffffff, ${COLORS.gogo_teal} 65%)`};
+  font-family: "Airwaves", sans-serif;
+  background: ${(p) =>
+    p.$gradient || `linear-gradient(90deg, #ffffff, ${COLORS.gogo_teal} 65%)`};
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -78,8 +87,11 @@ const SectionBadge = styled.span<{ $gradient?: string }>`
   font-weight: 800;
   letter-spacing: 0.05em;
   color: #0f0f0f;
-  background: ${(p) => p.$gradient || `linear-gradient(90deg, ${COLORS.gogo_blue}, ${COLORS.gogo_teal})`};
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35),
+  background: ${(p) =>
+    p.$gradient ||
+    `linear-gradient(90deg, ${COLORS.gogo_blue}, ${COLORS.gogo_teal})`};
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.35),
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
 `;
 
@@ -111,7 +123,7 @@ const TitleUnderline = styled.div<{ $color?: string }>`
   overflow: hidden;
 
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -155,10 +167,10 @@ const GlowBlob = styled.div<{
   filter: blur(40px);
   opacity: 0.18;
   pointer-events: none;
-  top: ${(p) => p.$top ?? 'auto'};
-  bottom: ${(p) => p.$bottom ?? 'auto'};
-  left: ${(p) => p.$left ?? 'auto'};
-  right: ${(p) => p.$right ?? 'auto'};
+  top: ${(p) => p.$top ?? "auto"};
+  bottom: ${(p) => p.$bottom ?? "auto"};
+  left: ${(p) => p.$left ?? "auto"};
+  right: ${(p) => p.$right ?? "auto"};
 
   @keyframes slowDrift {
     from {
@@ -187,8 +199,8 @@ const InfoGrid = styled.div`
   }
 `;
 
-const InfoCard = styled.div`
-  background: rgba(255, 255, 255, 0.04);
+const InfoCard = styled.div<{ $bgColor?: string }>`
+  background: ${(p) => p.$bgColor || "rgba(255, 255, 255, 0.04)"};
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   padding: 1.25rem 1.25rem 1.1rem;
@@ -197,7 +209,7 @@ const InfoCard = styled.div`
 
 const Text = styled.p<{ $white?: boolean }>`
   font-size: 1.08rem;
-  color: ${(p) => (p.$white ? 'white' : 'rgba(255,255,255,0.8)')};
+  color: ${(p) => (p.$white ? "white" : "rgba(255,255,255,0.8)")};
   line-height: 1.75;
 `;
 
@@ -208,15 +220,15 @@ const BentoGrid = styled.div`
   grid-template-columns: repeat(12, 1fr);
   gap: 1.5rem;
   margin: 3rem 0;
-  
+
   @media (max-width: 900px) {
     grid-template-columns: 1fr;
   }
 `;
 
 const BentoCard = styled.div<{ $colSpan?: number; $bg?: string }>`
-  grid-column: span ${p => p.$colSpan || 4};
-  background: ${p => p.$bg || 'rgba(255, 255, 255, 0.05)'};
+  grid-column: span ${(p) => p.$colSpan || 4};
+  background: ${(p) => p.$bg || "rgba(255, 255, 255, 0.05)"};
   border-radius: 24px;
   padding: 1.5rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -224,7 +236,7 @@ const BentoCard = styled.div<{ $colSpan?: number; $bg?: string }>`
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  
+
   @media (max-width: 900px) {
     grid-column: span 12;
   }
@@ -246,7 +258,7 @@ const CGasGrid = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   width: 100%;
-  
+
   @media (max-width: 600px) {
     grid-template-columns: 1fr;
   }
@@ -257,7 +269,7 @@ const CGasItem = styled.div`
   flex-direction: column;
   align-items: center;
   text-align: center;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 12px;
   padding: 1rem;
 `;
@@ -265,13 +277,13 @@ const CGasItem = styled.div`
 const CGasValue = styled.div<{ $color: string }>`
   font-size: 2rem;
   font-weight: 800;
-  color: ${p => p.$color};
+  color: ${(p) => p.$color};
   margin-bottom: 0.5rem;
 `;
 
 const CGasLabel = styled.div`
   font-size: 0.85rem;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255, 0.7);
   line-height: 1.4;
 `;
 
@@ -288,12 +300,16 @@ const SkillsContainer = styled.div`
   margin-right: auto;
 `;
 
-const SkillChip = styled.div`
+const SkillChip = styled.div<{
+  $bgColor?: string;
+  $borderColor?: string;
+  $textColor?: string;
+}>`
   padding: 0.75rem 1.5rem;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: ${(p) => p.$bgColor || "rgba(255, 255, 255, 0.03)"};
+  border: 1px solid ${(p) => p.$borderColor || "rgba(255, 255, 255, 0.08)"};
   border-radius: 12px;
-  color: rgba(255, 255, 255, 0.9);
+  color: ${(p) => p.$textColor || "rgba(255, 255, 255, 0.9)"};
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -303,10 +319,15 @@ const SkillChip = styled.div`
   backdrop-filter: blur(10px);
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    background: linear-gradient(
+      120deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent
+    );
     transform: translateX(-100%);
     transition: transform 0.6s;
   }
@@ -317,7 +338,7 @@ const SkillChip = styled.div`
     border-color: rgba(255, 255, 255, 0.3);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
     color: #fff;
-    
+
     &::before {
       transform: translateX(100%);
     }
@@ -447,7 +468,11 @@ const PieCaption = styled.div`
 
 // --- Percent Components ---
 
-const PercentCircle = styled.div<{ $percent: number; $accent: string }>`
+const PercentCircle = styled.div<{
+  $percent: number;
+  $accent: string;
+  $innerBgColor?: string;
+}>`
   width: 150px;
   height: 150px;
   border-radius: 50%;
@@ -460,24 +485,27 @@ const PercentCircle = styled.div<{ $percent: number; $accent: string }>`
   box-shadow:
     0 0 0 4px rgba(255, 255, 255, 0.06),
     0 16px 40px rgba(0, 0, 0, 0.6);
-  background:
-    conic-gradient(
-      ${(p) => p.$accent} 0deg,
-      ${(p) => p.$accent} ${(p) => p.$percent * 3.6}deg,
-      rgba(255, 255, 255, 0.08) ${(p) => p.$percent * 3.6}deg,
-      rgba(255, 255, 255, 0.02) 360deg
-    );
+  background: conic-gradient(
+    ${(p) => p.$accent} 0deg,
+    ${(p) => p.$accent} ${(p) => p.$percent * 3.6}deg,
+    rgba(255, 255, 255, 0.08) ${(p) => p.$percent * 3.6}deg,
+    rgba(255, 255, 255, 0.02) 360deg
+  );
   transition: all 0.22s ease;
   margin-left: auto;
   margin-right: auto;
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 18px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.12), transparent 60%),
-      rgba(6, 6, 6, 0.96);
+    background: radial-gradient(
+        circle at 30% 30%,
+        rgba(255, 255, 255, 0.12),
+        transparent 60%
+      ),
+      ${(p) => p.$innerBgColor || "rgba(6, 6, 6, 0.96)"};
     box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.9);
   }
 `;
@@ -485,7 +513,8 @@ const PercentCircle = styled.div<{ $percent: number; $accent: string }>`
 const PercentText = styled.span<{ $gradient?: string }>`
   font-size: 2.8rem;
   font-weight: 800;
-  background: ${(p) => p.$gradient || `linear-gradient(90deg, #ffffff, ${COLORS.gogo_teal})`};
+  background: ${(p) =>
+    p.$gradient || `linear-gradient(90deg, #ffffff, ${COLORS.gogo_teal})`};
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -503,12 +532,12 @@ const CardLabel = styled.div`
 `;
 
 const pieTheme = {
-  textColor: '#e0e0e0',
+  textColor: "#e0e0e0",
   fontSize: 12,
   legends: {
-    text: { fill: '#e0e0e0' },
+    text: { fill: "#e0e0e0" },
   },
-  tooltip: { container: { background: '#2a2a2a', color: '#fff' } },
+  tooltip: { container: { background: "#2a2a2a", color: "#fff" } },
 } as const;
 
 // Default Data
@@ -518,7 +547,7 @@ const defaultSkills = [
   "Self-presentation and expression",
   "Workforce readiness and life skills",
   "Trusted mentors & positive role models",
-  "Supportive community of peers"
+  "Supportive community of peers",
 ];
 
 const photos = [Photo1, Photo2, Photo3, Photo4, Photo5, Photo6];
@@ -529,90 +558,159 @@ interface PopulationProps {
   populationOverride?: PopulationContent | null;
 }
 
-function PopulationComponent({ inline = false, previewMode = false, populationOverride }: PopulationProps) {
+function PopulationComponent({
+  inline = false,
+  previewMode = false,
+  populationOverride,
+}: PopulationProps) {
   const [activeSliceId, setActiveSliceId] = useState<string | null>(null);
   const [open, setOpen] = useState(true);
+  const [populationData, setPopulationData] =
+    useState<PopulationContent | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  // Fetch population content from backend when not in preview mode
+  useEffect(() => {
+    if (!previewMode && !populationOverride) {
+      fetchPopulationContent().then((data) => {
+        if (data) {
+          setPopulationData(data);
+        }
+      });
+    }
+  }, [previewMode, populationOverride]);
+
+  // Use override data in preview mode, fetched data otherwise
+  const effectiveData = previewMode
+    ? populationOverride
+    : (populationOverride ?? populationData);
+
   // --- Data Mapping ---
-  const sectionBadge = populationOverride?.sectionBadge ?? "Who We Serve";
-  const sectionBadgeGradient = populationOverride?.sectionBadgeGradientStart && populationOverride?.sectionBadgeGradientEnd
-    ? `linear-gradient(${populationOverride.sectionBadgeGradientDegree ?? 90}deg, ${populationOverride.sectionBadgeGradientStart}, ${populationOverride.sectionBadgeGradientEnd})`
-    : undefined;
+  const sectionBadge = effectiveData?.sectionBadge ?? "Who We Serve";
+  const sectionBadgeGradient =
+    effectiveData?.sectionBadgeGradientStart &&
+    effectiveData?.sectionBadgeGradientEnd
+      ? `linear-gradient(${effectiveData.sectionBadgeGradientDegree ?? 90}deg, ${effectiveData.sectionBadgeGradientStart}, ${effectiveData.sectionBadgeGradientEnd})`
+      : undefined;
 
-  const sectionTitle = populationOverride?.sectionTitle ?? "Our Population";
-  const sectionTitleUnderlineColor = populationOverride?.sectionTitleUnderlineColor;
+  const sectionTitle = effectiveData?.sectionTitle ?? "Our Population";
+  const sectionTitleUnderlineColor = effectiveData?.sectionTitleUnderlineColor;
 
-  const title = populationOverride?.title ?? "TALENT IS UNIVERSALLY DISTRIBUTED, BUT OPPORTUNITY IS NOT.";
-  
-  const titleGradient = populationOverride?.titleGradientStart && populationOverride?.titleGradientEnd 
-    ? `linear-gradient(${populationOverride.titleGradientDegree ?? 90}deg, ${populationOverride.titleGradientStart}, ${populationOverride.titleGradientEnd} 65%)`
-    : undefined;
-  
-  const titleUnderlineColor = populationOverride?.titleUnderlineColor;
+  const title =
+    effectiveData?.title ??
+    "TALENT IS UNIVERSALLY DISTRIBUTED, BUT OPPORTUNITY IS NOT.";
 
-  const blob1ColorA = populationOverride?.blob1ColorA ?? `${COLORS.gogo_blue}55`;
-  const blob1ColorB = populationOverride?.blob1ColorB ?? `${COLORS.gogo_purple}22`;
-  const blob2ColorA = populationOverride?.blob2ColorA ?? `${COLORS.gogo_pink}55`;
-  const blob2ColorB = populationOverride?.blob2ColorB ?? `${COLORS.gogo_yellow}22`;
+  const titleGradient =
+    effectiveData?.titleGradientStart && effectiveData?.titleGradientEnd
+      ? `linear-gradient(${effectiveData.titleGradientDegree ?? 90}deg, ${effectiveData.titleGradientStart}, ${effectiveData.titleGradientEnd} 65%)`
+      : undefined;
 
-  const infoCard1Text = populationOverride?.infoCard1Text ?? 
+  const titleUnderlineColor = effectiveData?.titleUnderlineColor;
+
+  const blob1ColorA = effectiveData?.blob1ColorA ?? `${COLORS.gogo_blue}55`;
+  const blob1ColorB = effectiveData?.blob1ColorB ?? `${COLORS.gogo_purple}22`;
+  const blob2ColorA = effectiveData?.blob2ColorA ?? `${COLORS.gogo_pink}55`;
+  const blob2ColorB = effectiveData?.blob2ColorB ?? `${COLORS.gogo_yellow}22`;
+
+  const infoCard1Text =
+    effectiveData?.infoCard1Text ??
     "That is why, since 2008, Guitars Over Guns has used the transformative power of music, mentorship, and the arts to unlock possibilities for young people who face systemic barriers to opportunity.";
-  
-  const infoCard2Text = populationOverride?.infoCard2Text ?? 
+
+  const infoCard2Text =
+    effectiveData?.infoCard2Text ??
     "The Childhood Global Assessment Scale (C-GAS) is a widely recognized tool to measure young people's psychological and social well-being.";
 
-  const demographicsData = populationOverride?.demographicsData ?? [
+  const demographicsData = effectiveData?.demographicsData ?? [
     {
-      id: 'Hispanic/Latinx',
-      label: 'Hispanic/Latinx',
+      id: "Hispanic/Latinx",
+      label: "Hispanic/Latinx",
       value: 46,
       color: COLORS.gogo_teal,
     },
     {
-      id: 'Black/African American',
-      label: 'Black/African American',
+      id: "Black/African American",
+      label: "Black/African American",
       value: 44,
       color: COLORS.gogo_blue,
     },
     {
-      id: 'Other',
-      label: 'Other',
+      id: "Other",
+      label: "Other",
       value: 10,
       color: COLORS.gogo_purple,
     },
   ];
 
-  const demographicsCaption = populationOverride?.demographicsCaption ?? "Ages 8-18: 96% at or below the Federal Poverty Level";
+  const demographicsCaption =
+    effectiveData?.demographicsCaption ??
+    "Ages 8-18: 96% at or below the Federal Poverty Level";
 
-  const stat1Percent = populationOverride?.stat1Percent ?? 94;
-  const stat1Text = populationOverride?.stat1Text ?? "of students made or maintained academic gains (2023-2024)";
-  const stat1Color = populationOverride?.stat1Color ?? COLORS.gogo_teal;
+  const stat1Percent = effectiveData?.stat1Percent ?? 94;
+  const stat1Text =
+    effectiveData?.stat1Text ??
+    "of students made or maintained academic gains (2023-2024)";
+  const stat1Color = effectiveData?.stat1Color ?? COLORS.gogo_teal;
 
-  const stat2Percent = populationOverride?.stat2Percent ?? 95;
-  const stat2Text = populationOverride?.stat2Text ?? "of students improved conduct in their classes (2023-2024)";
-  const stat2Color = populationOverride?.stat2Color ?? COLORS.gogo_pink;
+  const stat2Percent = effectiveData?.stat2Percent ?? 95;
+  const stat2Text =
+    effectiveData?.stat2Text ??
+    "of students improved conduct in their classes (2023-2024)";
+  const stat2Color = effectiveData?.stat2Color ?? COLORS.gogo_pink;
 
-  const cgasTitle = populationOverride?.cgasTitle ?? "Mental Health & Well-being (C-GAS)";
-  const cgasTooltip = populationOverride?.cgasTooltip ?? "The Childhood Global Assessment Scale (C-GAS) is a widely recognized tool to measure young people's psychological and social well-being.";
-  
+  const cgasTitle =
+    effectiveData?.cgasTitle ?? "Mental Health & Well-being (C-GAS)";
+  const cgasTooltip =
+    effectiveData?.cgasTooltip ??
+    "The Childhood Global Assessment Scale (C-GAS) is a widely recognized tool to measure young people's psychological and social well-being.";
+
   const defaultCgasStats = [
-    { value: "100%", label: "Improved 5+ points\n(High Risk Students)", color: COLORS.gogo_blue },
-    { value: "85%", label: "Maintained or Increased\n(Fall 2023)", color: COLORS.gogo_purple },
-    { value: "84%", label: "Maintained or Increased\n(Spring 2024)", color: COLORS.gogo_teal },
+    {
+      value: "100%",
+      label: "Improved 5+ points\n(High Risk Students)",
+      color: COLORS.gogo_blue,
+    },
+    {
+      value: "85%",
+      label: "Maintained or Increased\n(Fall 2023)",
+      color: COLORS.gogo_purple,
+    },
+    {
+      value: "84%",
+      label: "Maintained or Increased\n(Spring 2024)",
+      color: COLORS.gogo_teal,
+    },
   ];
 
-  const cgasStats = populationOverride?.cgasStats ?? defaultCgasStats;
+  const cgasStats = effectiveData?.cgasStats ?? defaultCgasStats;
 
-  const skillsTitle = populationOverride?.skillsTitle ?? "Core Skills Developed";
-  const skillsList = populationOverride?.skillsList ?? defaultSkills;
+  const skillsTitle = effectiveData?.skillsTitle ?? "Core Skills Developed";
+  const skillsList = effectiveData?.skillsList ?? defaultSkills;
+
+  // NEW: Container and card styling
+  const containerBgGradient =
+    effectiveData?.containerBgGradientStart &&
+    effectiveData?.containerBgGradientEnd
+      ? `linear-gradient(${effectiveData.containerBgGradientDegree ?? 180}deg, ${effectiveData.containerBgGradientStart}, ${effectiveData.containerBgGradientEnd})`
+      : undefined;
+  const containerOverlayColor1 = effectiveData?.containerOverlayColor1;
+  const containerOverlayColor2 = effectiveData?.containerOverlayColor2;
+  const infoCardBgColor = effectiveData?.infoCardBgColor;
+  const bentoCardBgColor = effectiveData?.bentoCardBgColor;
+  const skillChipBgColor = effectiveData?.skillChipBgColor;
+  const skillChipBorderColor = effectiveData?.skillChipBorderColor;
+  const skillChipTextColor = effectiveData?.skillChipTextColor;
+  const percentCircleInnerBgColor = effectiveData?.percentCircleInnerBgColor;
 
   const content = (
-    <Container>
+    <Container
+      $bgGradient={containerBgGradient}
+      $overlayColor1={containerOverlayColor1}
+      $overlayColor2={containerOverlayColor2}
+    >
       <GlowBlob
         $size={240}
         $colorA={blob1ColorA}
@@ -631,50 +729,44 @@ function PopulationComponent({ inline = false, previewMode = false, populationOv
       <SectionHeaderWrap>
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.75rem',
-            justifyContent: 'center',
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            justifyContent: "center",
           }}
         >
-          <SectionBadge $gradient={sectionBadgeGradient}>{sectionBadge}</SectionBadge>
+          <SectionBadge $gradient={sectionBadgeGradient}>
+            {sectionBadge}
+          </SectionBadge>
           <SectionName>{sectionTitle}</SectionName>
         </div>
       </SectionHeaderWrap>
       <SectionDivider $color={sectionTitleUnderlineColor} />
-      <Title $gradient={titleGradient} style={{ textAlign: 'center' }}>
+      <Title $gradient={titleGradient} style={{ textAlign: "center" }}>
         {title}
       </Title>
       <TitleUnderline $color={titleUnderlineColor} />
-      <InfoGrid style={{ justifyItems: 'center', textAlign: 'center' }}>
-        <InfoCard>
-          <Text $white>
-            {infoCard1Text}
-          </Text>
+      <InfoGrid style={{ justifyItems: "center", textAlign: "center" }}>
+        <InfoCard $bgColor={infoCardBgColor}>
+          <Text $white>{infoCard1Text}</Text>
         </InfoCard>
-        <InfoCard>
-          <Text $white>
-            {infoCard2Text}
-          </Text>
+        <InfoCard $bgColor={infoCardBgColor}>
+          <Text $white>{infoCard2Text}</Text>
         </InfoCard>
       </InfoGrid>
 
       <BentoGrid>
         {/* Demographics Pie Chart */}
-        <BentoCard $colSpan={6}>
+        <BentoCard $colSpan={6} $bg={bentoCardBgColor}>
           <CardTitle>Student Demographics</CardTitle>
           <PieChartWrapper>
             <PieContainer>
-              <ResponsivePieCanvas
+              <ResponsivePie
                 data={demographicsData}
                 innerRadius={0.6}
                 theme={pieTheme}
                 colors={
-                  ((
-                    datum: {
-                      data: { id: string; color: string };
-                    },
-                  ) =>
+                  ((datum: { data: { id: string; color: string } }) =>
                     activeSliceId && datum.data.id !== activeSliceId
                       ? `${datum.data.color}66`
                       : datum.data.color) as any
@@ -682,10 +774,10 @@ function PopulationComponent({ inline = false, previewMode = false, populationOv
                 enableArcLabels={false}
                 enableArcLinkLabels={false}
                 margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
-                onMouseEnter={(datum: { data: { id: string } }) => {
+                onMouseEnter={(datum) => {
                   setActiveSliceId(datum.data.id);
                 }}
-                onMouseMove={(datum: { data: { id: string } }) => {
+                onMouseMove={(datum) => {
                   setActiveSliceId(datum.data.id);
                 }}
                 onMouseLeave={() => setActiveSliceId(null)}
@@ -703,72 +795,97 @@ function PopulationComponent({ inline = false, previewMode = false, populationOv
               ))}
             </LegendRow>
           </PieChartWrapper>
-          <PieCaption>
-            {demographicsCaption}
-          </PieCaption>
+          <PieCaption>{demographicsCaption}</PieCaption>
         </BentoCard>
 
         {/* Academic Gains */}
-        <BentoCard $colSpan={3}>
-           <PercentCircle $percent={stat1Percent} $accent={stat1Color}>
+        <BentoCard $colSpan={3} $bg={bentoCardBgColor}>
+          <PercentCircle
+            $percent={stat1Percent}
+            $accent={stat1Color}
+            $innerBgColor={percentCircleInnerBgColor}
+          >
             <PercentText>{stat1Percent}%</PercentText>
           </PercentCircle>
-          <CardLabel>
-            {stat1Text}
-          </CardLabel>
+          <CardLabel>{stat1Text}</CardLabel>
         </BentoCard>
 
         {/* Conduct Improvement */}
-        <BentoCard $colSpan={3}>
-          <PercentCircle $percent={stat2Percent} $accent={stat2Color}>
+        <BentoCard $colSpan={3} $bg={bentoCardBgColor}>
+          <PercentCircle
+            $percent={stat2Percent}
+            $accent={stat2Color}
+            $innerBgColor={percentCircleInnerBgColor}
+          >
             <PercentText>{stat2Percent}%</PercentText>
           </PercentCircle>
-          <CardLabel>
-            {stat2Text}
-          </CardLabel>
+          <CardLabel>{stat2Text}</CardLabel>
         </BentoCard>
 
         {/* C-GAS Stats - Wide Strip */}
-        <BentoCard $colSpan={12} $bg="#161616" className="animate-in">
+        <BentoCard
+          $colSpan={12}
+          $bg={bentoCardBgColor || "#161616"}
+          className="animate-in"
+        >
           <CardTitle>
             {cgasTitle}
-            <Tooltip 
-              title={cgasTooltip} 
-              arrow 
+            <Tooltip
+              title={cgasTooltip}
+              arrow
               placement="top"
               componentsProps={{
                 tooltip: {
                   sx: {
-                    bgcolor: '#222',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    fontSize: '0.85rem',
-                    padding: '12px',
-                    maxWidth: '300px',
-                    textAlign: 'center'
-                  }
-                }
+                    bgcolor: "#222",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    fontSize: "0.85rem",
+                    padding: "12px",
+                    maxWidth: "300px",
+                    textAlign: "center",
+                  },
+                },
               }}
             >
-              <InfoOutlinedIcon sx={{ fontSize: 18, color: 'rgba(255,255,255,0.4)', cursor: 'help', '&:hover': { color: COLORS.gogo_teal } }} />
+              <InfoOutlinedIcon
+                sx={{
+                  fontSize: 18,
+                  color: "rgba(255,255,255,0.4)",
+                  cursor: "help",
+                  "&:hover": { color: COLORS.gogo_teal },
+                }}
+              />
             </Tooltip>
           </CardTitle>
           <CGasGrid>
             {cgasStats.map((stat, index) => (
               <CGasItem key={index}>
                 <CGasValue $color={stat.color}>{stat.value}</CGasValue>
-                <CGasLabel style={{ whiteSpace: 'pre-wrap' }}>{stat.label}</CGasLabel>
+                <CGasLabel style={{ whiteSpace: "pre-wrap" }}>
+                  {stat.label}
+                </CGasLabel>
               </CGasItem>
             ))}
           </CGasGrid>
         </BentoCard>
-
       </BentoGrid>
 
-      <div className="animate-in" style={{ textAlign: 'center' }}>
-        <h3 style={{ color: 'white', marginBottom: '1rem', fontSize: '1.2rem' }}>{skillsTitle}</h3>
+      <div className="animate-in" style={{ textAlign: "center" }}>
+        <h3
+          style={{ color: "white", marginBottom: "1rem", fontSize: "1.2rem" }}
+        >
+          {skillsTitle}
+        </h3>
         <SkillsContainer>
-          {skillsList.map(skill => (
-            <SkillChip key={skill}>{skill}</SkillChip>
+          {skillsList.map((skill) => (
+            <SkillChip
+              key={skill}
+              $bgColor={skillChipBgColor}
+              $borderColor={skillChipBorderColor}
+              $textColor={skillChipTextColor}
+            >
+              {skill}
+            </SkillChip>
           ))}
         </SkillsContainer>
       </div>
@@ -780,7 +897,6 @@ function PopulationComponent({ inline = false, previewMode = false, populationOv
           ))}
         </ImageStrip>
       )}
-
     </Container>
   );
 
@@ -793,38 +909,38 @@ function PopulationComponent({ inline = false, previewMode = false, populationOv
       open={open}
       onClose={() => {
         setOpen(false);
-        navigate('/impact-report');
+        navigate("/impact-report");
       }}
       fullWidth
       maxWidth="xl"
       PaperProps={{
         style: {
-          background: 'transparent',
-          boxShadow: 'none',
-          overflow: 'visible'
+          background: "transparent",
+          boxShadow: "none",
+          overflow: "visible",
         },
       }}
       BackdropProps={{
         style: {
-          backdropFilter: 'blur(12px)',
-          backgroundColor: 'rgba(0,0,0,0.8)',
+          backdropFilter: "blur(12px)",
+          backgroundColor: "rgba(0,0,0,0.8)",
         },
       }}
     >
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: "relative" }}>
         <IconButton
           onClick={() => {
             setOpen(false);
-            navigate('/impact-report');
+            navigate("/impact-report");
           }}
           sx={{
-            position: 'absolute',
+            position: "absolute",
             right: 20,
             top: 20,
-            color: 'white',
+            color: "white",
             zIndex: 10,
-            background: 'rgba(0,0,0,0.5)',
-            '&:hover': { background: 'rgba(0,0,0,0.8)' }
+            background: "rgba(0,0,0,0.5)",
+            "&:hover": { background: "rgba(0,0,0,0.8)" },
           }}
         >
           <CloseIcon />

@@ -23,6 +23,8 @@ export interface MissionStat {
 }
 
 export interface MissionContent {
+  // Background - Full CSS gradient string
+  backgroundGradient?: string | null;
   backgroundColor?: string | null;
   backgroundImage?: string | null;
   backgroundImageAlt?: string | null;
@@ -80,6 +82,15 @@ export interface MissionContent {
   } | null;
 
   modals?: MissionModal[] | null;
+
+  // Overlay colors (radial gradients behind content)
+  overlayColor1?: string | null;
+  overlayColor2?: string | null;
+  overlayOpacity?: number | null;
+
+  // Stat card styling
+  statCardBgColor?: string | null;
+  statCardBorderWidth?: number | null;
 }
 
 export interface MissionDocument extends MissionContent {

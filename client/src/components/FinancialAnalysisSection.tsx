@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { ResponsivePieCanvas } from '@nivo/pie';
 import COLORS from '../../assets/colors';
+import { fetchFinancialContent, FinancialContent, FinancialPieItem } from '../services/impact.api';
 
 // Reuse the visual flair from the former Future section
 const float = keyframes`
@@ -49,17 +50,13 @@ const SectionHeader = styled.div`
   margin-bottom: 3.5rem;
 `;
 
-const Title = styled.h2`
+const Title = styled.h2<{ $gradient?: string }>`
   font-size: 3rem;
   font-weight: 900;
-  background: linear-gradient(
-    to right,
-    ${COLORS.gogo_green},
-    ${COLORS.gogo_blue},
-    ${COLORS.gogo_purple}
-  );
+  background: ${(p) => p.$gradient ?? `linear-gradient(to right, ${COLORS.gogo_green}, ${COLORS.gogo_blue}, ${COLORS.gogo_purple})`};
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 0.75rem;
   letter-spacing: -0.01em;
 `;
@@ -284,8 +281,8 @@ const Note = styled.div`
   font-size: 0.95rem;
 `;
 
-// Data from screenshot (percentages, approximated budget trend)
-const years = [
+// Default data (used when no API data is available)
+const DEFAULT_YEARS = [
   '2015',
   '2016',
   '2017-18',
@@ -296,14 +293,34 @@ const years = [
   '2022-23',
 ];
 
-const revenue = [
+const DEFAULT_REVENUE = [
   200000, 300000, 800000, 1400000, 2300000, 2500000, 3200000, 3400000,
 ];
-const expenses = [
+const DEFAULT_EXPENSES = [
   150000, 280000, 500000, 1100000, 1500000, 2400000, 2950000, 3100000,
 ];
 
-const MAX_Y = 4000000; // $4,000,000 top tick from screenshot
+const DEFAULT_MAX_Y = 4000000; // $4,000,000 top tick from screenshot
+
+const DEFAULT_COMES_FROM: FinancialPieItem[] = [
+  { id: 'foundations', label: "Foundations & The Children's Trust", value: 41, color: COLORS.gogo_blue },
+  { id: 'individuals', label: 'Individuals', value: 19, color: COLORS.gogo_yellow },
+  { id: 'government', label: 'Government Grants', value: 18, color: COLORS.gogo_purple },
+  { id: 'program-services', label: 'Program Services & Earned Revenue', value: 15, color: COLORS.gogo_teal },
+  { id: 'special-events', label: 'Special Events', value: 5, color: COLORS.gogo_pink },
+  { id: 'corporate', label: 'Corporate Contributions', value: 2, color: '#bdbdbd' },
+];
+
+const DEFAULT_GOES_TO: FinancialPieItem[] = [
+  { id: 'program-services', label: 'Program Services', value: 75, color: COLORS.gogo_blue },
+  { id: 'admin', label: 'Administrative & General', value: 12, color: COLORS.gogo_purple },
+  { id: 'fundraising', label: 'Fundraising', value: 13, color: COLORS.gogo_yellow },
+];
+
+interface FinancialAnalysisSectionProps {
+  previewMode?: boolean;
+  financialOverride?: FinancialContent | null;
+}
 
 function buildPolyline(
   points: number[],
@@ -313,6 +330,7 @@ function buildPolyline(
   padR = 20,
   padT = 20,
   padB = 40,
+  maxY = DEFAULT_MAX_Y,
 ) {
   const innerW = width - padL - padR;
   const innerH = height - padT - padB;
@@ -320,21 +338,31 @@ function buildPolyline(
 
   const toPoint = (value: number, idx: number) => {
     const x = padL + idx * stepX;
-    const y = padT + innerH - (value / MAX_Y) * innerH;
+    const y = padT + innerH - (value / maxY) * innerH;
     return `${x},${y}`;
   };
 
   return points.map((v, i) => toPoint(v, i)).join(' ');
 }
 
-function AxisLabels({ width, height }: { width: number; height: number }) {
+interface AxisLabelsProps {
+  width: number;
+  height: number;
+  years: string[];
+  maxY: number;
+  axisLineColor: string;
+  axisLabelColor: string;
+}
+
+function AxisLabels({ width, height, years, maxY, axisLineColor, axisLabelColor }: AxisLabelsProps) {
   const padL = 60;
   const padB = 40;
   const innerW = width - padL - 20;
   const innerH = height - 20 - padB;
   const stepX = innerW / (years.length - 1);
 
-  const yTicks = [0, 1000000, 2000000, 3000000, 4000000];
+  // Generate y-ticks based on maxY
+  const yTicks = [0, maxY * 0.25, maxY * 0.5, maxY * 0.75, maxY];
 
   return (
     <g>
@@ -344,19 +372,19 @@ function AxisLabels({ width, height }: { width: number; height: number }) {
         y1={20 + innerH}
         x2={padL + innerW}
         y2={20 + innerH}
-        stroke="#666"
+        stroke={axisLineColor}
       />
       {/* Y-axis */}
-      <line x1={padL} y1={20} x2={padL} y2={20 + innerH} stroke="#666" />
+      <line x1={padL} y1={20} x2={padL} y2={20 + innerH} stroke={axisLineColor} />
       {yTicks.map((t) => {
-        const y = 20 + innerH - (t / MAX_Y) * innerH;
+        const y = 20 + innerH - (t / maxY) * innerH;
         return (
           <g key={`y-${t}`}>
-            <line x1={padL - 5} y1={y} x2={padL} y2={y} stroke="#666" />
+            <line x1={padL - 5} y1={y} x2={padL} y2={y} stroke={axisLineColor} />
             <text
               x={padL - 10}
               y={y + 4}
-              fill="#aaa"
+              fill={axisLabelColor}
               fontSize="11"
               textAnchor="end"
             >
@@ -370,7 +398,7 @@ function AxisLabels({ width, height }: { width: number; height: number }) {
           key={yr}
           x={padL + i * stepX}
           y={20 + innerH + 18}
-          fill="#aaa"
+          fill={axisLabelColor}
           fontSize="11"
           textAnchor="middle"
         >
@@ -381,27 +409,27 @@ function AxisLabels({ width, height }: { width: number; height: number }) {
   );
 }
 
-function FinancialAnalysisSection(): JSX.Element {
-  useEffect(() => {
-    // Mount/unmount trace
-    console.log('[FinancialAnalysis] mount');
-    return () => {
-      console.log('[FinancialAnalysis] unmount');
-    };
-  }, []);
+function FinancialAnalysisSection({
+  previewMode = false,
+  financialOverride,
+}: FinancialAnalysisSectionProps): JSX.Element {
+  const [financialData, setFinancialData] = useState<FinancialContent | null>(null);
 
+  // Fetch data from API when not in preview mode
   useEffect(() => {
-    // Log animatable children inside this section
-    const section = sectionRef.current;
-    if (!section) return;
-    const nodes = Array.from(
-      section.querySelectorAll('.animate-child'),
-    ) as HTMLElement[];
-    console.log(
-      '[FinancialAnalysis][Anim] registered children:',
-      nodes.map((n) => n.dataset.animId || `${n.tagName}.${n.className}`),
-    );
-  }, []);
+    if (previewMode) return;
+    (async () => {
+      const data = await fetchFinancialContent();
+      if (data) setFinancialData(data);
+    })();
+  }, [previewMode]);
+
+  // Use override in preview mode, otherwise use fetched data
+  const effectiveData = useMemo(() => {
+    if (previewMode && financialOverride) return financialOverride;
+    return financialData ?? {};
+  }, [previewMode, financialOverride, financialData]);
+
   const sectionRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<SVGSVGElement>(null);
   const chartCardRef = useRef<HTMLDivElement>(null);
@@ -410,11 +438,48 @@ function FinancialAnalysisSection(): JSX.Element {
   const [range] = useState<'ALL' | 'SINCE2019' | 'RECENT3'>('ALL');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [cursorX, setCursorX] = useState<number | null>(null);
-  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(
-    null,
-  );
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
-  // Animations temporarily disabled in this section
+  // Extract values from effectiveData with defaults
+  const years = effectiveData.years ?? DEFAULT_YEARS;
+  const revenue = effectiveData.revenueData ?? DEFAULT_REVENUE;
+  const expenses = effectiveData.expenseData ?? DEFAULT_EXPENSES;
+  const MAX_Y = effectiveData.maxYAxis ?? DEFAULT_MAX_Y;
+
+  const title = effectiveData.title ?? 'Financial Overview';
+  const titleGradient = effectiveData.titleGradient ?? `linear-gradient(to right, ${COLORS.gogo_green}, ${COLORS.gogo_blue}, ${COLORS.gogo_purple})`;
+  const subtitle = effectiveData.subtitle ?? 'Annual budget growth since 2015 and how resources are raised and allocated';
+  const subtitleColor = effectiveData.subtitleColor ?? 'rgba(255, 255, 255, 0.75)';
+
+  const sectionBgGradient = effectiveData.sectionBgGradient ?? 'linear-gradient(135deg, #121212 0%, #1e1e1e 50%, #121212 100%)';
+  const decorationColor1 = effectiveData.decorationColor1 ?? 'rgba(25, 70, 245, 0.08)';
+  const decorationColor2 = effectiveData.decorationColor2 ?? 'rgba(190, 43, 147, 0.08)';
+
+  const kpiValueColor = effectiveData.kpiValueColor ?? '#ffffff';
+  const kpiLabelColor = effectiveData.kpiLabelColor ?? 'rgba(255, 255, 255, 0.7)';
+  const kpiNetPositiveColor = effectiveData.kpiNetPositiveColor ?? '#9BE15D';
+  const kpiNetNegativeColor = effectiveData.kpiNetNegativeColor ?? '#FF8A80';
+  const kpiRevenueLabel = effectiveData.kpiRevenueLabel ?? 'Latest Revenue';
+  const kpiExpensesLabel = effectiveData.kpiExpensesLabel ?? 'Latest Expenses';
+  const kpiNetLabel = effectiveData.kpiNetLabel ?? 'Net';
+  const kpiYoyLabel = effectiveData.kpiYoyLabel ?? 'YoY Growth (Rev / Exp)';
+
+  const lineChartTitle = effectiveData.lineChartTitle ?? 'Annual Budget Growth (Since 2015)';
+  const revenueLineColor = effectiveData.revenueLineColor ?? COLORS.gogo_blue;
+  const expenseLineColor = effectiveData.expenseLineColor ?? COLORS.gogo_pink;
+  const axisLineColor = effectiveData.axisLineColor ?? '#666666';
+  const axisLabelColor = effectiveData.axisLabelColor ?? '#aaaaaa';
+  const legendRevenueLabel = effectiveData.legendRevenueLabel ?? 'Revenue';
+  const legendExpensesLabel = effectiveData.legendExpensesLabel ?? 'Expenses';
+
+  const comesFromTitle = effectiveData.comesFromTitle ?? 'Where the Money Comes From';
+  const goesToTitle = effectiveData.goesToTitle ?? 'Where the Money Goes';
+  const breakdownTitle = effectiveData.breakdownTitle ?? 'Breakdown';
+  const breakdownTextColor = effectiveData.breakdownTextColor ?? 'rgba(255, 255, 255, 0.9)';
+  const pieChartInnerRadius = effectiveData.pieChartInnerRadius ?? 0.6;
+
+  const comesFrom = effectiveData.comesFromData ?? DEFAULT_COMES_FROM;
+  const goesTo = effectiveData.goesToData ?? DEFAULT_GOES_TO;
 
   const width = 800;
   const height = 360;
@@ -435,68 +500,8 @@ function FinancialAnalysisSection(): JSX.Element {
   const exp = filterByRange(expenses);
   const labels = rev.labels; // both ranges aligned
 
-  const revenuePoints = buildPolyline(rev.values, width, height);
-  const expensePoints = buildPolyline(exp.values, width, height);
-
-  const comesFrom = [
-    {
-      id: "Foundations & The Children's Trust",
-      label: "Foundations & The Children's Trust",
-      value: 41,
-      color: COLORS.gogo_blue,
-    },
-    {
-      id: 'Individuals',
-      label: 'Individuals',
-      value: 19,
-      color: COLORS.gogo_yellow,
-    },
-    {
-      id: 'Government Grants',
-      label: 'Government Grants',
-      value: 18,
-      color: COLORS.gogo_purple,
-    },
-    {
-      id: 'Program Services & Earned Revenue',
-      label: 'Program Services & Earned Revenue',
-      value: 15,
-      color: COLORS.gogo_teal,
-    },
-    {
-      id: 'Special Events',
-      label: 'Special Events',
-      value: 5,
-      color: COLORS.gogo_pink,
-    },
-    {
-      id: 'Corporate Contributions',
-      label: 'Corporate Contributions',
-      value: 2,
-      color: '#bdbdbd',
-    },
-  ];
-
-  const goesTo = [
-    {
-      id: 'Program Services',
-      label: 'Program Services',
-      value: 75,
-      color: COLORS.gogo_blue,
-    },
-    {
-      id: 'Administrative & General',
-      label: 'Administrative & General',
-      value: 12,
-      color: COLORS.gogo_purple,
-    },
-    {
-      id: 'Fundraising',
-      label: 'Fundraising',
-      value: 13,
-      color: COLORS.gogo_yellow,
-    },
-  ];
+  const revenuePoints = buildPolyline(rev.values, width, height, 60, 20, 20, 40, MAX_Y);
+  const expensePoints = buildPolyline(exp.values, width, height, 60, 20, 20, 40, MAX_Y);
 
   const pieTheme = {
     textColor: '#e0e0e0',
@@ -557,18 +562,19 @@ function FinancialAnalysisSection(): JSX.Element {
   };
 
   return (
-    <SectionWrapper ref={sectionRef}>
-      <BackgroundDecoration />
+    <SectionWrapper ref={sectionRef} style={{ background: sectionBgGradient }}>
+      <BackgroundDecoration style={{
+        background: `radial-gradient(circle at 20% 20%, ${decorationColor1} 0%, transparent 50%), radial-gradient(circle at 80% 80%, ${decorationColor2} 0%, transparent 50%)`
+      }} />
       <MainContainer>
         <SectionHeader>
-          <Title>Financial Overview</Title>
-          <Subtitle>
-            Annual budget growth since 2015 and how resources are raised and
-            allocated
+          <Title $gradient={titleGradient}>
+            {title}
+          </Title>
+          <Subtitle style={{ color: subtitleColor }}>
+            {subtitle}
           </Subtitle>
         </SectionHeader>
-
-        {/* Controls removed per request */}
 
         <KpiGrid
           className="animate-child"
@@ -576,30 +582,30 @@ function FinancialAnalysisSection(): JSX.Element {
           style={{ gridColumn: '1 / -1' }}
         >
           <KpiCard>
-            <KpiValue>{formatMoney(lastRev)}</KpiValue>
-            <KpiLabel>Latest Revenue</KpiLabel>
+            <KpiValue style={{ color: kpiValueColor }}>{formatMoney(lastRev)}</KpiValue>
+            <KpiLabel style={{ color: kpiLabelColor }}>{kpiRevenueLabel}</KpiLabel>
           </KpiCard>
           <KpiCard>
-            <KpiValue>{formatMoney(lastExp)}</KpiValue>
-            <KpiLabel>Latest Expenses</KpiLabel>
+            <KpiValue style={{ color: kpiValueColor }}>{formatMoney(lastExp)}</KpiValue>
+            <KpiLabel style={{ color: kpiLabelColor }}>{kpiExpensesLabel}</KpiLabel>
           </KpiCard>
           <KpiCard>
-            <KpiValue style={{ color: net >= 0 ? '#9BE15D' : '#FF8A80' }}>
+            <KpiValue style={{ color: net >= 0 ? kpiNetPositiveColor : kpiNetNegativeColor }}>
               {formatMoney(net)}
             </KpiValue>
-            <KpiLabel>Net</KpiLabel>
+            <KpiLabel style={{ color: kpiLabelColor }}>{kpiNetLabel}</KpiLabel>
           </KpiCard>
           <KpiCard>
-            <KpiValue>
-              <span style={{ color: COLORS.gogo_blue }}>
+            <KpiValue style={{ color: kpiValueColor }}>
+              <span style={{ color: revenueLineColor }}>
                 {revYoY.toFixed(1)}%
               </span>{' '}
               /{' '}
-              <span style={{ color: COLORS.gogo_pink }}>
+              <span style={{ color: expenseLineColor }}>
                 {expYoY.toFixed(1)}%
               </span>
             </KpiValue>
-            <KpiLabel>YoY Growth (Rev / Exp)</KpiLabel>
+            <KpiLabel style={{ color: kpiLabelColor }}>{kpiYoyLabel}</KpiLabel>
           </KpiCard>
         </KpiGrid>
 
@@ -611,7 +617,7 @@ function FinancialAnalysisSection(): JSX.Element {
             data-anim-id="line-chart"
             style={{ gridColumn: '1 / -1' }}
           >
-            <CardTitle>Annual Budget Growth (Since 2015)</CardTitle>
+            <CardTitle>{lineChartTitle}</CardTitle>
             <svg
               ref={chartRef}
               viewBox={`0 0 ${width} ${height}`}
@@ -625,35 +631,35 @@ function FinancialAnalysisSection(): JSX.Element {
                 <linearGradient id="rev" x1="0" x2="0" y1="0" y2="1">
                   <stop
                     offset="0%"
-                    stopColor={`${COLORS.gogo_blue}`}
+                    stopColor={revenueLineColor}
                     stopOpacity="0.6"
                   />
                   <stop
                     offset="100%"
-                    stopColor={`${COLORS.gogo_blue}`}
+                    stopColor={revenueLineColor}
                     stopOpacity="0.05"
                   />
                 </linearGradient>
                 <linearGradient id="exp" x1="0" x2="0" y1="0" y2="1">
                   <stop
                     offset="0%"
-                    stopColor={`${COLORS.gogo_pink}`}
+                    stopColor={expenseLineColor}
                     stopOpacity="0.6"
                   />
                   <stop
                     offset="100%"
-                    stopColor={`${COLORS.gogo_pink}`}
+                    stopColor={expenseLineColor}
                     stopOpacity="0.05"
                   />
                 </linearGradient>
               </defs>
 
-              <AxisLabels width={width} height={height} />
+              <AxisLabels width={width} height={height} years={labels} maxY={MAX_Y} axisLineColor={axisLineColor} axisLabelColor={axisLabelColor} />
 
               {showRevenue && (
                 <polyline
                   fill="none"
-                  stroke={COLORS.gogo_blue}
+                  stroke={revenueLineColor}
                   strokeWidth={3}
                   points={revenuePoints}
                 />
@@ -661,7 +667,7 @@ function FinancialAnalysisSection(): JSX.Element {
               {showExpenses && (
                 <polyline
                   fill="none"
-                  stroke={COLORS.gogo_pink}
+                  stroke={expenseLineColor}
                   strokeWidth={3}
                   points={expensePoints}
                 />
@@ -705,7 +711,7 @@ function FinancialAnalysisSection(): JSX.Element {
                             cx={x}
                             cy={revY}
                             r={5}
-                            fill={COLORS.gogo_blue}
+                            fill={revenueLineColor}
                             stroke="#121212"
                             strokeWidth={2}
                           />
@@ -715,7 +721,7 @@ function FinancialAnalysisSection(): JSX.Element {
                             cx={x}
                             cy={expY}
                             r={5}
-                            fill={COLORS.gogo_pink}
+                            fill={expenseLineColor}
                             stroke="#121212"
                             strokeWidth={2}
                           />
@@ -728,10 +734,10 @@ function FinancialAnalysisSection(): JSX.Element {
             </svg>
             <Legend>
               <LegendItem>
-                <Swatch $color={COLORS.gogo_blue} /> Revenue
+                <Swatch $color={revenueLineColor} /> {legendRevenueLabel}
               </LegendItem>
               <LegendItem>
-                <Swatch $color={COLORS.gogo_pink} /> Expenses
+                <Swatch $color={expenseLineColor} /> {legendExpensesLabel}
               </LegendItem>
             </Legend>
             {hoverIdx !== null && cursorPos !== null && (
@@ -747,13 +753,13 @@ function FinancialAnalysisSection(): JSX.Element {
                 </div>
                 {showRevenue && (
                   <div>
-                    <span style={{ color: COLORS.gogo_blue }}>Revenue:</span>{' '}
+                    <span style={{ color: revenueLineColor }}>{legendRevenueLabel}:</span>{' '}
                     {formatMoney(rev.values[hoverIdx])}
                   </div>
                 )}
                 {showExpenses && (
                   <div>
-                    <span style={{ color: COLORS.gogo_pink }}>Expenses:</span>{' '}
+                    <span style={{ color: expenseLineColor }}>{legendExpensesLabel}:</span>{' '}
                     {formatMoney(exp.values[hoverIdx])}
                   </div>
                 )}
@@ -771,11 +777,11 @@ function FinancialAnalysisSection(): JSX.Element {
             }}
           >
             <PieCard className="animate-child" data-anim-id="pie-comes-from">
-              <CardTitle>Where the Money Comes From</CardTitle>
+              <CardTitle>{comesFromTitle}</CardTitle>
               <PieContainer>
                 <ResponsivePieCanvas
                   data={comesFrom}
-                  innerRadius={0.6}
+                  innerRadius={pieChartInnerRadius}
                   theme={pieTheme}
                   colors={{ datum: 'data.color' }}
                   enableArcLabels={false}
@@ -787,12 +793,12 @@ function FinancialAnalysisSection(): JSX.Element {
 
             <ChartCard className="animate-child" data-anim-id="breakdown">
               <CardTitle style={{ marginBottom: '0.75rem' }}>
-                Breakdown
+                {breakdownTitle}
               </CardTitle>
               <Bullets>
                 {comesFrom.map((c) => (
-                  <BulletItem key={c.id}>
-                    <BulletDot $color={(c as any).color} />
+                  <BulletItem key={c.id} style={{ color: breakdownTextColor }}>
+                    <BulletDot $color={c.color} />
                     <span style={{ fontWeight: 700 }}>{c.value}%</span>
                     <span>{c.label}</span>
                   </BulletItem>
@@ -801,11 +807,11 @@ function FinancialAnalysisSection(): JSX.Element {
             </ChartCard>
 
             <PieCard className="animate-child" data-anim-id="pie-goes-to">
-              <CardTitle>Where the Money Goes</CardTitle>
+              <CardTitle>{goesToTitle}</CardTitle>
               <PieContainer>
                 <ResponsivePieCanvas
                   data={goesTo}
-                  innerRadius={0.6}
+                  innerRadius={pieChartInnerRadius}
                   theme={pieTheme}
                   colors={{ datum: 'data.color' }}
                   enableArcLabels={false}

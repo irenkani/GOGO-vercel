@@ -13,17 +13,14 @@ import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import MissionSection from './sections/MissionSection';
 import ImpactSection from './components/ImpactSection';
-import OurMethodSection from './components/OurMethodSection';
-// import ProgramsSection from './components/ProgramsSection';
+import OurMethodSection from "./components/OurMethodSection";
 import CurriculumSection from './components/CurriculumSection';
-import LocationsSection from './sections/LocationsSection';
-// Replaced Stories of Impact carousel with a single quote section
+import LocationsSection from "./sections/LocationsSection";
 import SingleQuoteSection from './components/SingleQuoteSection';
 import FlexA from './components/FlexA';
 import FlexB from './components/FlexB';
 import FlexC from './components/FlexC';
-import PartnersSection from './components/PartnersSection';
-// import FutureVisionSection from './components/FutureVisionSection';
+import PartnersSection from "./components/PartnersSection";
 import ImpactLevelsSection from './components/ImpactLevelsSection';
 import Population from './components/Population';
 import gogoWideLogo from '../assets/GOGO_LOGO_WIDE_WH.png';
@@ -246,22 +243,20 @@ const MusicSectionDescription = styled.p`
 
 // Main component
 function ImpactReportPage() {
-  // Perf: avoid noisy logs in production
   // Refs for each section to animate
   const heroRef = useRef<HTMLDivElement>(null);
   const missionRef = useRef<HTMLDivElement>(null);
   const impactRef = useRef<HTMLDivElement>(null);
   const methodRef = useRef<HTMLDivElement>(null);
   const disciplinesRef = useRef<HTMLDivElement>(null);
-  // const programsRef = useRef<HTMLDivElement>(null);
   const testimonialRef = useRef<HTMLDivElement>(null);
   const musicRef = useRef<HTMLDivElement>(null);
   const locationsRef = useRef<HTMLDivElement>(null);
   const partnersRef = useRef<HTMLDivElement>(null);
   const financialRef = useRef<HTMLDivElement>(null);
   const flexRef = useRef<HTMLDivElement>(null);
-  // const futureRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
+
   // Only show the intro once per tab: initialize from the module-level flag.
   const [introComplete, setIntroComplete] = useState(hasShownIntroInThisTab);
 
@@ -269,8 +264,6 @@ function ImpactReportPage() {
     hasShownIntroInThisTab = true;
     setIntroComplete(true);
   };
-
-  // Music player state and initialization removed
 
   // Apply GOGO-like styles to body when component mounts
   useEffect(() => {
@@ -430,12 +423,10 @@ function ImpactReportPage() {
     const sections = [
       impactRef.current,
       disciplinesRef.current,
-      // programsRef.current,
       testimonialRef.current,
       musicRef.current,
       financialRef.current,
       partnersRef.current,
-      // futureRef.current,
       footerRef.current,
     ];
 

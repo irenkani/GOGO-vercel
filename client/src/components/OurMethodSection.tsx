@@ -1,17 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined';
-import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined';
-import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import MicNoneOutlinedIcon from '@mui/icons-material/MicNoneOutlined';
-import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import COLORS from '../../assets/colors';
 import Reveal from '../../animations/components/Reveal';
+import { fetchMethodContent, MethodContent, MethodItem } from '../services/impact.api';
+import { getImpactIconByKey } from './IconSelector';
 
-const Section = styled.section`
+// Default method items for fallback
+const DEFAULT_METHOD_ITEMS: MethodItem[] = [
+  { id: '1', iconKey: 'handshakeOutlined', text: 'Trusting relationships with caring adults' },
+  { id: '2', iconKey: 'menuBook', text: 'High-quality, no-cost arts education during typically unsupervised hours' },
+  { id: '3', iconKey: 'lightbulb', text: 'Enriching, safe activities that foster self-esteem & creative self-expression' },
+  { id: '4', iconKey: 'tuneOutlined', text: 'Skill Development' },
+  { id: '5', iconKey: 'mic', text: 'Performance' },
+  { id: '6', iconKey: 'favoriteBorder', text: 'Trauma-informed mental health support' },
+];
+
+// Default content
+const DEFAULT_CONTENT: MethodContent = {
+  title: 'Our Method',
+  titleGradient: `linear-gradient(90deg, ${COLORS.gogo_blue}, ${COLORS.gogo_teal})`,
+  subtitle: 'Our mentoring-centric approach is delivered by paid, professional musician mentors and helps alleviate primary challenges faced by youth in vulnerable communities by providing:',
+  subtitleColor: 'rgba(255, 255, 255, 0.8)',
+  sectionBgGradient: 'linear-gradient(180deg, #111111 0%, #0a0a0a 100%)',
+  glowColor1: COLORS.gogo_blue,
+  glowColor2: COLORS.gogo_teal,
+  cardBgColor: 'rgba(255, 255, 255, 0.02)',
+  cardBorderColor: 'rgba(255, 255, 255, 0.05)',
+  cardTitleColor: '#ffffff',
+  iconGradient: `linear-gradient(135deg, ${COLORS.gogo_blue}, ${COLORS.gogo_teal})`,
+  methodItems: DEFAULT_METHOD_ITEMS,
+  leadText: 'Our successful model pairs youth with a caring adult mentor, the unparalleled power of music, and trauma-informed mental health support.',
+  leadTextColor: '#ffffff',
+  secondaryText: 'Separately, these interventions increase academic and social-emotional development as well as future employability and economic potential. We uniquely combine these to maximize their collective effectiveness. Through weekly after-school music and art instruction, mentoring, trauma-informed care, and performance opportunities across Miami, Chicago, Los Angeles, and New York, GOGO is a platform for youth to learn, grow and unleash their leadership potential.',
+  secondaryTextColor: 'rgba(255, 255, 255, 0.6)',
+  secondaryBorderColor: COLORS.gogo_purple,
+};
+
+interface SectionProps {
+  $bgGradient: string;
+  $glowColor1: string;
+  $glowColor2: string;
+}
+
+const Section = styled.section<SectionProps>`
   padding: 8rem 0;
-  background: linear-gradient(180deg, #111111 0%, #0a0a0a 100%);
+  background: ${(p) => p.$bgGradient};
   position: relative;
   overflow: hidden;
 
@@ -23,7 +56,7 @@ const Section = styled.section`
     left: -10%;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, ${COLORS.gogo_blue}11 0%, transparent 70%);
+    background: radial-gradient(circle, ${(p) => p.$glowColor1}11 0%, transparent 70%);
     filter: blur(80px);
     z-index: 0;
     pointer-events: none;
@@ -36,7 +69,7 @@ const Section = styled.section`
     right: -5%;
     width: 500px;
     height: 500px;
-    background: radial-gradient(circle, ${COLORS.gogo_teal}11 0%, transparent 70%);
+    background: radial-gradient(circle, ${(p) => p.$glowColor2}11 0%, transparent 70%);
     filter: blur(80px);
     z-index: 0;
     pointer-events: none;
@@ -57,20 +90,28 @@ const Header = styled.div`
   max-width: 900px;
 `;
 
-const Title = styled.h2`
+interface TitleProps {
+  $gradient: string;
+}
+
+const Title = styled.h2<TitleProps>`
   font-size: clamp(2.5rem, 5vw, 3.5rem);
   font-weight: 900;
   margin: 0 0 1.5rem 0;
   letter-spacing: -0.02em;
-  background: linear-gradient(90deg, ${COLORS.gogo_blue}, ${COLORS.gogo_teal});
+  background: ${(p) => p.$gradient};
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   display: inline-block;
 `;
 
-const Subtitle = styled.p`
+interface SubtitleProps {
+  $color: string;
+}
+
+const Subtitle = styled.p<SubtitleProps>`
   margin: 0;
-  color: rgba(255, 255, 255, 0.8);
+  color: ${(p) => p.$color};
   font-size: 1.25rem;
   line-height: 1.6;
   font-weight: 300;
@@ -90,14 +131,18 @@ const Grid = styled.div`
   }
 `;
 
-const IconWrap = styled.div`
+interface IconWrapProps {
+  $gradient: string;
+}
+
+const IconWrap = styled.div<IconWrapProps>`
   width: 64px;
   height: 64px;
   border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, ${COLORS.gogo_blue}, ${COLORS.gogo_teal});
+  background: ${(p) => p.$gradient};
   color: white;
   margin-bottom: 0.75rem;
   position: relative;
@@ -111,12 +156,17 @@ const IconWrap = styled.div`
   }
 `;
 
-const Card = styled.div`
+interface CardProps {
+  $bgColor: string;
+  $borderColor: string;
+}
+
+const Card = styled.div<CardProps>`
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: ${(p) => p.$bgColor};
+  border: 1px solid ${(p) => p.$borderColor};
   border-radius: 24px;
   padding: 2rem;
   height: 100%;
@@ -180,8 +230,12 @@ const Card = styled.div`
   }
 `;
 
-const CardTitle = styled.h3`
-  color: white;
+interface CardTitleProps {
+  $color: string;
+}
+
+const CardTitle = styled.h3<CardTitleProps>`
+  color: ${(p) => p.$color};
   font-family: 'Century Gothic', 'Arial', sans-serif;
   font-weight: 700;
   font-size: 1.1rem;
@@ -205,24 +259,28 @@ const NarrativeContainer = styled.div`
   }
 `;
 
-const LeadText = styled.div`
+interface LeadTextProps {
+  $color: string;
+}
+
+const LeadText = styled.div<LeadTextProps>`
   font-size: 1.5rem;
   line-height: 1.5;
-  color: white;
+  color: ${(p) => p.$color};
   font-weight: 500;
-  
-  span {
-    color: ${COLORS.gogo_teal};
-    font-weight: 700;
-  }
 `;
 
-const SecondaryText = styled.div`
+interface SecondaryTextProps {
+  $color: string;
+  $borderColor: string;
+}
+
+const SecondaryText = styled.div<SecondaryTextProps>`
   font-size: 0.9rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.6);
+  color: ${(p) => p.$color};
   padding-left: 2rem;
-  border-left: 1px solid ${COLORS.gogo_purple};
+  border-left: 1px solid ${(p) => p.$borderColor};
   max-width: 90%;
 
   @media (max-width: 900px) {
@@ -232,45 +290,86 @@ const SecondaryText = styled.div`
   }
 `;
 
-function OurMethodSection(): JSX.Element {
-  const items = [
-    {
-      icon: <HandshakeOutlinedIcon fontSize="inherit" />,
-      text: 'Trusting relationships with caring adults',
-    },
-    {
-      icon: <MenuBookOutlinedIcon fontSize="inherit" />,
-      text: 'High-quality, no-cost arts education during typically unsupervised hours',
-    },
-    {
-      icon: <LightbulbOutlinedIcon fontSize="inherit" />,
-      text: 'Enriching, safe activities that foster self-esteem & creative self-expression',
-    },
-    { icon: <SettingsOutlinedIcon fontSize="inherit" />, text: 'Skill Development' },
-    { icon: <MicNoneOutlinedIcon fontSize="inherit" />, text: 'Performance' },
-    { icon: <FavoriteBorderOutlinedIcon fontSize="inherit" />, text: 'Trauma-informed mental health support' },
-  ];
+interface OurMethodSectionProps {
+  previewMode?: boolean;
+  methodOverride?: Partial<MethodContent>;
+}
+
+function OurMethodSection({ previewMode = false, methodOverride }: OurMethodSectionProps): JSX.Element {
+  const [methodData, setMethodData] = useState<MethodContent | null>(null);
+
+  useEffect(() => {
+    if (!previewMode) {
+      fetchMethodContent().then((data) => {
+        if (data) setMethodData(data);
+      });
+    }
+  }, [previewMode]);
+
+  // Merge fetched data with override (for preview mode)
+  const effectiveData: MethodContent = {
+    ...DEFAULT_CONTENT,
+    ...(methodData || {}),
+    ...(methodOverride || {}),
+  };
+
+  // Extract values with defaults
+  const title = effectiveData.title ?? DEFAULT_CONTENT.title;
+  const titleGradient = effectiveData.titleGradient ?? DEFAULT_CONTENT.titleGradient;
+  const subtitle = effectiveData.subtitle ?? DEFAULT_CONTENT.subtitle;
+  const subtitleColor = effectiveData.subtitleColor ?? DEFAULT_CONTENT.subtitleColor;
+  const sectionBgGradient = effectiveData.sectionBgGradient ?? DEFAULT_CONTENT.sectionBgGradient;
+  const glowColor1 = effectiveData.glowColor1 ?? DEFAULT_CONTENT.glowColor1;
+  const glowColor2 = effectiveData.glowColor2 ?? DEFAULT_CONTENT.glowColor2;
+  const cardBgColor = effectiveData.cardBgColor ?? DEFAULT_CONTENT.cardBgColor;
+  const cardBorderColor = effectiveData.cardBorderColor ?? DEFAULT_CONTENT.cardBorderColor;
+  const cardTitleColor = effectiveData.cardTitleColor ?? DEFAULT_CONTENT.cardTitleColor;
+  const iconGradient = effectiveData.iconGradient ?? DEFAULT_CONTENT.iconGradient;
+  const methodItems = effectiveData.methodItems ?? DEFAULT_CONTENT.methodItems;
+  const leadText = effectiveData.leadText ?? DEFAULT_CONTENT.leadText;
+  const leadTextColor = effectiveData.leadTextColor ?? DEFAULT_CONTENT.leadTextColor;
+  const secondaryText = effectiveData.secondaryText ?? DEFAULT_CONTENT.secondaryText;
+  const secondaryTextColor = effectiveData.secondaryTextColor ?? DEFAULT_CONTENT.secondaryTextColor;
+  const secondaryBorderColor = effectiveData.secondaryBorderColor ?? DEFAULT_CONTENT.secondaryBorderColor;
+
+  // Render icon from iconKey
+  const renderIcon = (iconKey: string) => {
+    const iconDef = getImpactIconByKey(iconKey);
+    if (iconDef) {
+      const IconComponent = iconDef.Icon;
+      return <IconComponent fontSize="inherit" />;
+    }
+    // Fallback to a default icon
+    return null;
+  };
 
   return (
-    <Section>
+    <Section
+      $bgGradient={sectionBgGradient!}
+      $glowColor1={glowColor1!}
+      $glowColor2={glowColor2!}
+    >
       <Container>
         <Reveal variant="fade-up" duration={800}>
           <Header>
-            <Title>Our Method</Title>
-            <Subtitle>
-              Our mentoring-centric approach is delivered by paid, professional
-              musician mentors and helps alleviate primary challenges faced by
-              youth in vulnerable communities by providing:
-            </Subtitle>
+            <Title $gradient={titleGradient!}>{title}</Title>
+            <Subtitle $color={subtitleColor!}>{subtitle}</Subtitle>
           </Header>
         </Reveal>
 
         <Reveal variant="stagger-up" staggerSelector=".method-card" delay={200}>
           <Grid>
-            {items.map((it, index) => (
-              <Card key={index} className="method-card">
-                <IconWrap aria-hidden>{it.icon}</IconWrap>
-                <CardTitle>{it.text}</CardTitle>
+            {methodItems!.map((item, index) => (
+              <Card
+                key={item.id || index}
+                className="method-card"
+                $bgColor={cardBgColor!}
+                $borderColor={cardBorderColor!}
+              >
+                <IconWrap $gradient={iconGradient!} aria-hidden>
+                  {renderIcon(item.iconKey)}
+                </IconWrap>
+                <CardTitle $color={cardTitleColor!}>{item.text}</CardTitle>
               </Card>
             ))}
           </Grid>
@@ -278,20 +377,9 @@ function OurMethodSection(): JSX.Element {
 
         <Reveal variant="fade-up" delay={400} duration={800}>
           <NarrativeContainer>
-            <LeadText>
-              Our successful model pairs youth with a <span>caring adult mentor</span>, the
-              unparalleled power of <span>music</span>, and <span>trauma-informed mental health
-              support</span>.
-            </LeadText>
-            <SecondaryText>
-              Separately, these interventions increase academic and
-              social-emotional development as well as future employability and
-              economic potential. We uniquely combine these to maximize their
-              collective effectiveness. Through weekly after-school music and art
-              instruction, mentoring, trauma-informed care, and performance
-              opportunities across Miami, Chicago, Los Angeles, and New York, GOGO
-              is a platform for youth to learn, grow and unleash their leadership
-              potential.
+            <LeadText $color={leadTextColor!}>{leadText}</LeadText>
+            <SecondaryText $color={secondaryTextColor!} $borderColor={secondaryBorderColor!}>
+              {secondaryText}
             </SecondaryText>
           </NarrativeContainer>
         </Reveal>
