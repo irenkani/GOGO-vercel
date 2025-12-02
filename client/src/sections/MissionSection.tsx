@@ -526,6 +526,58 @@ function MissionSection(
     }
   }, [previewMode, missionOverride]);
 
+  // Animate modal cards in rows when dialog opens
+  // NOTE: This hook MUST be called before any conditional returns to follow Rules of Hooks
+  useEffect(() => {
+    if (!showDisciplines) return;
+
+    const grid = modalGridRef.current;
+    if (!grid) return;
+
+    const cards = Array.from(
+      grid.querySelectorAll('[data-disc-card="true"]'),
+    ) as HTMLElement[];
+    if (cards.length === 0) return;
+
+    type RowGroup = { top: number; els: HTMLElement[] };
+    const rowGroups: RowGroup[] = [];
+    const threshold = 8; // px tolerance for grouping by row
+
+    cards.forEach((node) => {
+      const el = node as HTMLElement;
+      const { top } = el.getBoundingClientRect();
+
+      // find an existing group within threshold
+      let group = rowGroups.find((g) => Math.abs(g.top - top) <= threshold);
+      if (!group) {
+        group = { top, els: [] };
+        rowGroups.push(group);
+      }
+      group.els.push(el);
+
+      // reset initial state for animation
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(16px) scale(0.98)';
+    });
+
+    // Sort by vertical position and animate row by row
+    rowGroups.sort((a, b) => a.top - b.top);
+    let cumulativeDelay = 0;
+    const rowDelay = 80; // ms between rows
+
+    rowGroups.forEach((group) => {
+      animate(group.els, {
+        opacity: [0, 1],
+        translateY: [16, 0],
+        scale: [0.98, 1],
+        duration: 500,
+        delay: cumulativeDelay,
+        easing: 'easeOutCubic',
+      });
+      cumulativeDelay += rowDelay;
+    });
+  }, [showDisciplines]);
+
   // Artistic disciplines mapped to vector icons
   const disciplineNameIcons: Record<string, React.ReactNode> = {
     'Music Production': <GraphicEqIcon />,
@@ -702,57 +754,6 @@ function MissionSection(
   if (missionHidden) {
     return <></>;
   }
-
-  // Animate modal cards in rows when dialog opens
-  useEffect(() => {
-    if (!showDisciplines) return;
-
-    const grid = modalGridRef.current;
-    if (!grid) return;
-
-    const cards = Array.from(
-      grid.querySelectorAll('[data-disc-card="true"]'),
-    ) as HTMLElement[];
-    if (cards.length === 0) return;
-
-    type RowGroup = { top: number; els: HTMLElement[] };
-    const rowGroups: RowGroup[] = [];
-    const threshold = 8; // px tolerance for grouping by row
-
-    cards.forEach((node) => {
-      const el = node as HTMLElement;
-      const { top } = el.getBoundingClientRect();
-
-      // find an existing group within threshold
-      let group = rowGroups.find((g) => Math.abs(g.top - top) <= threshold);
-      if (!group) {
-        group = { top, els: [] };
-        rowGroups.push(group);
-      }
-      group.els.push(el);
-
-      // reset initial state for animation
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(16px) scale(0.98)';
-    });
-
-    // Sort by vertical position and animate row by row
-    rowGroups.sort((a, b) => a.top - b.top);
-    let cumulativeDelay = 0;
-    const rowDelay = 80; // ms between rows
-
-    rowGroups.forEach((group) => {
-      animate(group.els, {
-        opacity: [0, 1],
-        translateY: [16, 0],
-        scale: [0.98, 1],
-        duration: 500,
-        delay: stagger(60, { start: cumulativeDelay }),
-        easing: 'easeOutCubic',
-      });
-      cumulativeDelay += rowDelay;
-    });
-  }, [showDisciplines]);
 
   return (
     <SectionContainer

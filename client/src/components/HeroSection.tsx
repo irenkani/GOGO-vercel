@@ -1438,14 +1438,23 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   useEffect(() => {
     // Load hero content unless disabled (admin preview can pass data instead)
     if (!previewMode) {
-      fetchHeroContent().then((data) => {
-        if (data) {
-          setHero(data);
-        } else {
+      fetchHeroContent()
+        .then((data) => {
+          if (data) {
+            setHero(data);
+            setError(false);
+          } else {
+            // Data doesn't exist yet (404) - not an error, just use defaults
+            setError(false);
+          }
+          setLoading(false);
+        })
+        .catch((err) => {
+          // Only set error for actual network/API errors, not 404s
+          console.error('[HeroSection] Error fetching hero content', err);
           setError(true);
-        }
-        setLoading(false);
-      });
+          setLoading(false);
+        });
     } else if (heroOverride) {
       setHero((prev) => ({ ...(prev ?? ({} as HeroContent)), ...(heroOverride as HeroContent) }));
       setLoading(false);
