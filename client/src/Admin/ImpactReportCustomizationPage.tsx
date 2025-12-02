@@ -296,9 +296,10 @@ function ImpactReportCustomizationPage() {
   };
 
   // Load section data from API based on tab route key
-  const loadSection = async (routeKey: AdminTabRouteKey) => {
-    // Skip if already loaded or currently loading
-    if (loadedSections.has(routeKey) || sectionLoading === routeKey) return;
+  const loadSection = async (routeKey: AdminTabRouteKey, force = false) => {
+    // Skip if already loaded or currently loading (unless force is true)
+    if (!force && (loadedSections.has(routeKey) || sectionLoading === routeKey))
+      return;
 
     setSectionLoading(routeKey);
 
@@ -1249,8 +1250,8 @@ function ImpactReportCustomizationPage() {
       setDefaultSwatch(normalized);
     } catch {}
 
-    // Refetch the current section
-    await loadSection(sectionKey);
+    // Refetch the current section (force reload since we just removed it from loadedSections)
+    await loadSection(sectionKey, true);
     setIsDirty(false);
     enqueueSnackbar("Changes discarded", { variant: "info" });
   };

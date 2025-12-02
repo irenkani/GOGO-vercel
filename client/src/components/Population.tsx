@@ -597,13 +597,29 @@ function PopulationComponent({
     ? populationOverride
     : (externalData ?? populationOverride ?? internalData);
 
+  // Helper to compose gradient from legacy fields
+  const composeFromLegacy = (
+    start: string | undefined,
+    end: string | undefined,
+    degree: number | undefined,
+    suffix: string = ""
+  ): string | undefined => {
+    if (start && end) {
+      return `linear-gradient(${degree ?? 90}deg, ${start}, ${end}${suffix})`;
+    }
+    return undefined;
+  };
+
   // --- Data Mapping ---
   const sectionBadge = effectiveData?.sectionBadge ?? "Who We Serve";
+  // Use full gradient string if available, otherwise compose from legacy fields
   const sectionBadgeGradient =
-    effectiveData?.sectionBadgeGradientStart &&
-    effectiveData?.sectionBadgeGradientEnd
-      ? `linear-gradient(${effectiveData.sectionBadgeGradientDegree ?? 90}deg, ${effectiveData.sectionBadgeGradientStart}, ${effectiveData.sectionBadgeGradientEnd})`
-      : undefined;
+    effectiveData?.sectionBadgeGradient ||
+    composeFromLegacy(
+      effectiveData?.sectionBadgeGradientStart,
+      effectiveData?.sectionBadgeGradientEnd,
+      effectiveData?.sectionBadgeGradientDegree
+    );
 
   const sectionTitle = effectiveData?.sectionTitle ?? "Our Population";
   const sectionTitleUnderlineColor = effectiveData?.sectionTitleUnderlineColor;
@@ -612,10 +628,15 @@ function PopulationComponent({
     effectiveData?.title ??
     "TALENT IS UNIVERSALLY DISTRIBUTED, BUT OPPORTUNITY IS NOT.";
 
+  // Use full gradient string if available, otherwise compose from legacy fields
   const titleGradient =
-    effectiveData?.titleGradientStart && effectiveData?.titleGradientEnd
-      ? `linear-gradient(${effectiveData.titleGradientDegree ?? 90}deg, ${effectiveData.titleGradientStart}, ${effectiveData.titleGradientEnd} 65%)`
-      : undefined;
+    effectiveData?.titleGradient ||
+    composeFromLegacy(
+      effectiveData?.titleGradientStart,
+      effectiveData?.titleGradientEnd,
+      effectiveData?.titleGradientDegree,
+      " 65%"
+    );
 
   const titleUnderlineColor = effectiveData?.titleUnderlineColor;
 
@@ -698,12 +719,14 @@ function PopulationComponent({
   const skillsTitle = effectiveData?.skillsTitle ?? "Core Skills Developed";
   const skillsList = effectiveData?.skillsList ?? defaultSkills;
 
-  // NEW: Container and card styling
+  // Container and card styling - use full gradient string if available
   const containerBgGradient =
-    effectiveData?.containerBgGradientStart &&
-    effectiveData?.containerBgGradientEnd
-      ? `linear-gradient(${effectiveData.containerBgGradientDegree ?? 180}deg, ${effectiveData.containerBgGradientStart}, ${effectiveData.containerBgGradientEnd})`
-      : undefined;
+    effectiveData?.containerBgGradient ||
+    composeFromLegacy(
+      effectiveData?.containerBgGradientStart,
+      effectiveData?.containerBgGradientEnd,
+      effectiveData?.containerBgGradientDegree ?? 180
+    );
   const containerOverlayColor1 = effectiveData?.containerOverlayColor1;
   const containerOverlayColor2 = effectiveData?.containerOverlayColor2;
   const infoCardBgColor = effectiveData?.infoCardBgColor;

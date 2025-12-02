@@ -40,10 +40,6 @@ export function PopulationTabEditor({
     useState<number>(0);
   const gradientPickerOpen = Boolean(gradientPickerAnchor);
 
-  // Helper to check if a gradient is missing
-  const isGradientMissing = (value: string | null | undefined): boolean =>
-    !value || value.trim() === "";
-
   // Helper to check if a color field is missing (null, undefined, or empty string)
   const isColorMissing = (value: string | null | undefined): boolean =>
     !value || value.trim() === "";
@@ -63,15 +59,48 @@ export function PopulationTabEditor({
   const getColorButtonStyle = (value: string | null | undefined) =>
     isColorMissing(value) ? missingFieldStyle : normalFieldStyle;
 
-  // Get gradient values - only returns what's in the database (no defaults)
+  // Compose gradient from legacy fields if full string not available
+  const composeFromLegacy = (
+    start: string | undefined,
+    end: string | undefined,
+    degree: number | undefined,
+  ): string => {
+    if (start && end) {
+      return `linear-gradient(${degree ?? 90}deg, ${start}, ${end})`;
+    }
+    return "";
+  };
+
+  // Get gradient values - compose from legacy fields if full string not available
   const getDefaultGradient = (key: PopulationGradientKey): string => {
     switch (key) {
       case "sectionBadgeGradient":
-        return population.sectionBadgeGradient || "";
+        return (
+          population.sectionBadgeGradient ||
+          composeFromLegacy(
+            population.sectionBadgeGradientStart,
+            population.sectionBadgeGradientEnd,
+            population.sectionBadgeGradientDegree,
+          )
+        );
       case "titleGradient":
-        return population.titleGradient || "";
+        return (
+          population.titleGradient ||
+          composeFromLegacy(
+            population.titleGradientStart,
+            population.titleGradientEnd,
+            population.titleGradientDegree,
+          )
+        );
       case "containerBgGradient":
-        return population.containerBgGradient || "";
+        return (
+          population.containerBgGradient ||
+          composeFromLegacy(
+            population.containerBgGradientStart,
+            population.containerBgGradientEnd,
+            population.containerBgGradientDegree,
+          )
+        );
       default:
         return "";
     }
