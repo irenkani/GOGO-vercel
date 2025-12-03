@@ -7,29 +7,52 @@ import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import TwitterIcon from "@mui/icons-material/Twitter";
 import YouTubeIcon from "@mui/icons-material/YouTube";
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
 import { animate, stagger } from 'animejs';
 import COLORS from '../assets/colors';
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import MissionSection from './sections/MissionSection';
 import ImpactSection from './components/ImpactSection';
-import OurMethodSection from './components/OurMethodSection';
-// import ProgramsSection from './components/ProgramsSection';
+import OurMethodSection from "./components/OurMethodSection";
 import CurriculumSection from './components/CurriculumSection';
-import LocationsSection from './sections/LocationsSection';
-// Replaced Stories of Impact carousel with a single quote section
+import LocationsSection from "./sections/LocationsSection";
 import SingleQuoteSection from './components/SingleQuoteSection';
 import FlexA from './components/FlexA';
 import FlexB from './components/FlexB';
 import FlexC from './components/FlexC';
-import PartnersSection from './components/PartnersSection';
-// import FutureVisionSection from './components/FutureVisionSection';
+import PartnersSection from "./components/PartnersSection";
 import ImpactLevelsSection from './components/ImpactLevelsSection';
 import Population from './components/Population';
 import gogoWideLogo from '../assets/GOGO_LOGO_WIDE_WH.png';
 import SpotifyEmbedsSection from './components/SpotifyEmbedsSection';
 import FinancialAnalysisSection from './components/FinancialAnalysisSection';
 import IntroOverlay from "./components/IntroOverlay";
+import {
+  fetchHeroContent,
+  fetchMissionContent,
+  fetchPopulationContent,
+  fetchFinancialContent,
+  fetchMethodContent,
+  HeroContent,
+  MissionContent,
+  PopulationContent,
+  FinancialContent,
+  MethodContent,
+} from './services/impact.api';
+
+// Types for centralized data loading
+interface ImpactReportData {
+  hero: HeroContent;
+  mission: MissionContent;
+  population: PopulationContent;
+  financial: FinancialContent;
+  method: MethodContent;
+}
 
 // Track whether the intro overlay has been shown in this tab.
 // This lives at the module level so it persists across component unmounts/remounts
@@ -39,7 +62,7 @@ let hasShownIntroInThisTab = false;
 // Styled components for Spotify-like footer
 const SpotifyFooter = styled.footer`
   background: #121212;
-  padding: 5rem 0 2rem;
+  padding: 0;
   position: relative;
   overflow: hidden;
 `;
@@ -181,23 +204,6 @@ const FooterLegal = styled.div`
   }
 `;
 
-const SpotifyCredit = styled.div`
-  width: 100%;
-  text-align: center;
-  margin-top: 2rem;
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.3);
-
-  a {
-    color: rgba(255, 255, 255, 0.4);
-    text-decoration: none;
-
-    &:hover {
-      color: white;
-    }
-  }
-`;
-
 // Styled components for the Music Section
 const MusicSectionWrapper = styled.section`
   padding: 5rem 0;
@@ -244,33 +250,84 @@ const MusicSectionDescription = styled.p`
 
 // Music player removed; replaced with Spotify embeds section
 
+// Loading spinner container
+const LoadingContainer = styled.div`
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #121212;
+  color: white;
+  gap: 2rem;
+`;
+
+
 // Main component
 function ImpactReportPage() {
-  // Perf: avoid noisy logs in production
+  // Centralized data loading state
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reportData, setReportData] = useState<ImpactReportData | null>(null);
+
   // Refs for each section to animate
   const heroRef = useRef<HTMLDivElement>(null);
   const missionRef = useRef<HTMLDivElement>(null);
   const impactRef = useRef<HTMLDivElement>(null);
   const methodRef = useRef<HTMLDivElement>(null);
   const disciplinesRef = useRef<HTMLDivElement>(null);
-  // const programsRef = useRef<HTMLDivElement>(null);
   const testimonialRef = useRef<HTMLDivElement>(null);
   const musicRef = useRef<HTMLDivElement>(null);
   const locationsRef = useRef<HTMLDivElement>(null);
   const partnersRef = useRef<HTMLDivElement>(null);
   const financialRef = useRef<HTMLDivElement>(null);
   const flexRef = useRef<HTMLDivElement>(null);
-  // const futureRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
+
   // Only show the intro once per tab: initialize from the module-level flag.
   const [introComplete, setIntroComplete] = useState(hasShownIntroInThisTab);
+
+  // Centralized data fetching - load all section data at once
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        const [hero, mission, population, financial, method] = await Promise.all([
+          fetchHeroContent(),
+          fetchMissionContent(),
+          fetchPopulationContent(),
+          fetchFinancialContent(),
+          fetchMethodContent(),
+        ]);
+
+        // Check if any required section failed to load
+        if (!hero || !mission || !population || !financial || !method) {
+          console.error('[ImpactReportPage] One or more sections failed to load:', {
+            hero: !!hero,
+            mission: !!mission,
+            population: !!population,
+            financial: !!financial,
+            method: !!method,
+          });
+          setLoadError(true);
+          return;
+        }
+
+        setReportData({ hero, mission, population, financial, method });
+      } catch (error) {
+        console.error('[ImpactReportPage] Failed to load report data:', error);
+        setLoadError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAllData();
+  }, []);
 
   const handleIntroFinish = () => {
     hasShownIntroInThisTab = true;
     setIntroComplete(true);
   };
-
-  // Music player state and initialization removed
 
   // Apply GOGO-like styles to body when component mounts
   useEffect(() => {
@@ -426,16 +483,14 @@ function ImpactReportPage() {
     );
 
     // Observe all sections except hero (which is animated on load)
-    // methodRef is also excluded as it handles its own internal animations
     const sections = [
+      methodRef.current,
       impactRef.current,
       disciplinesRef.current,
-      // programsRef.current,
       testimonialRef.current,
       musicRef.current,
       financialRef.current,
       partnersRef.current,
-      // futureRef.current,
       footerRef.current,
     ];
 
@@ -478,29 +533,76 @@ function ImpactReportPage() {
     };
   }, []);
 
+  // Show error dialog (only after loading completes and there's an error)
+  if (!loading && (loadError || !reportData)) {
+    return (
+      <LoadingContainer>
+        <Dialog
+          open
+          PaperProps={{
+            style: {
+              background: 'linear-gradient(180deg, #1a1a1a, #121212)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: 16,
+              padding: '1rem',
+            },
+          }}
+        >
+          <DialogTitle sx={{ color: 'white', textAlign: 'center' }}>
+            Failed to Load Impact Report
+          </DialogTitle>
+          <DialogContent>
+            <p style={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center' }}>
+              Unable to load the impact report data. Please check your connection and try again.
+            </p>
+          </DialogContent>
+          <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="contained"
+              sx={{
+                background: COLORS.gogo_blue,
+                '&:hover': { background: COLORS.gogo_purple },
+              }}
+            >
+              Reload Page
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </LoadingContainer>
+    );
+  }
+
   return (
     <div className="impact-report">
-      {!introComplete && <IntroOverlay onFinish={handleIntroFinish} />}
+      {!introComplete && <IntroOverlay onFinish={handleIntroFinish} isLoading={loading} />}
       <div className="spotify-gradient-background" />
       <Header />
-      <div className="main-content" style={{ paddingBottom: "120px" }}>
-        <div id="hero" ref={heroRef}>
-          <HeroSection />
-        </div>
-        <div id="mission" ref={missionRef}>
-          <MissionSection />
-        </div>
-        {/* Who We Serve (moved up) */}
-        <div id="population">
-          <Population inline />
-        </div>
-        {/* Financial Overview (moved higher) */}
-        <div id="financial" ref={financialRef}>
-          <FinancialAnalysisSection />
-        </div>
-        <div id="method" ref={methodRef}>
-          <OurMethodSection />
-        </div>
+      <div className="main-content" style={{ paddingBottom: 0 }}>
+        {reportData && (
+          <>
+            {/* Sticky scroll container for hero and following sections */}
+            <div style={{ position: 'relative' }}>
+              <div id="hero" ref={heroRef}>
+                <HeroSection heroData={reportData.hero} />
+              </div>
+              <div id="mission" ref={missionRef} style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+                <MissionSection missionData={reportData.mission} />
+              </div>
+            </div>
+            {/* Who We Serve (moved up) */}
+            <div id="population">
+              <Population inline populationData={reportData.population} />
+            </div>
+            {/* Financial Overview (moved higher) */}
+            <div id="financial" ref={financialRef}>
+              <FinancialAnalysisSection financialData={reportData.financial} />
+            </div>
+            <div id="method" ref={methodRef}>
+              <OurMethodSection methodData={reportData.method} />
+            </div>
+          </>
+        )}
         {/* ArtisticDisciplinesSection removed; content now appears in Mission modal */}
         <div id="curriculum">
           <CurriculumSection />
@@ -673,10 +775,6 @@ function ImpactReportPage() {
             <a href="/terms">Terms of Use</a>
             <a href="/accessibility">Accessibility</a>
           </FooterLegal>
-          <SpotifyCredit>
-            Design inspired by Spotify. Guitars Over Guns is not affiliated with
-            Spotify.
-          </SpotifyCredit>
         </FooterBottom>
       </SpotifyFooter>
       {/* Music player removed */}

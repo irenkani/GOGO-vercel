@@ -7,15 +7,14 @@ import {
   createAnimatable,
   utils,
 } from 'animejs';
-import COLORS from '../../assets/colors';
-import heroBackdrop from '../../assets/images/image.png';
-import { fetchHeroContent, type HeroContent } from '../services/impact.api';
-import kickSample from '../assets/audio/heroPads/kick.wav';
-import snareSample from '../assets/audio/heroPads/snare.wav';
-import clapSample from '../assets/audio/heroPads/clap.wav';
-import hatSample from '../assets/audio/heroPads/hat.wav';
+import COLORS from "../../assets/colors";
+import { fetchHeroContent, type HeroContent } from "../services/impact.api";
+import kickSample from "../../assets/audio/heroPads/kick.wav";
+import snareSample from "../../assets/audio/heroPads/snare.wav";
+import clapSample from "../../assets/audio/heroPads/clap.wav";
+import hatSample from "../../assets/audio/heroPads/hat.wav";
 
-const PAD_IDS = ['kick', 'snare', 'clap', 'hat'] as const;
+const PAD_IDS = ["kick", "snare", "clap", "hat"] as const;
 
 type PadId = (typeof PAD_IDS)[number];
 
@@ -50,10 +49,13 @@ type PadSparkInstance = {
 type SequencerPattern = Record<PadId, boolean[]>;
 
 const createPadRecord = <T,>(value: T): Record<PadId, T> =>
-  PAD_IDS.reduce((acc, id) => {
-    acc[id] = value;
-    return acc;
-  }, {} as Record<PadId, T>);
+  PAD_IDS.reduce(
+    (acc, id) => {
+      acc[id] = value;
+      return acc;
+    },
+    {} as Record<PadId, T>,
+  );
 
 const PAD_BURST_DURATION = 520;
 const MAX_PAD_BURSTS = 6;
@@ -113,33 +115,33 @@ const BASS_SEQUENCE = [
 
 const PAD_CONFIG: PadConfig[] = [
   {
-    id: 'kick',
-    label: 'Kick',
-    color: 'hsl(26, 36%, 58%)',
+    id: "kick",
+    label: "Kick",
+    color: "hsl(26, 36%, 58%)",
     sample: kickSample,
     spread: 0.2,
     intensity: 0.55,
   },
   {
-    id: 'snare',
-    label: 'Snare',
-    color: 'hsl(8, 34%, 62%)',
+    id: "snare",
+    label: "Snare",
+    color: "hsl(8, 34%, 62%)",
     sample: snareSample,
     spread: 0.3,
     intensity: 0.4,
   },
   {
-    id: 'clap',
-    label: 'Clap',
-    color: 'hsl(35, 20%, 65%)',
+    id: "clap",
+    label: "Clap",
+    color: "hsl(35, 20%, 65%)",
     sample: clapSample,
     spread: 0.28,
     intensity: 0.38,
   },
   {
-    id: 'hat',
-    label: 'Hat',
-    color: 'hsl(60, 22%, 70%)',
+    id: "hat",
+    label: "Hat",
+    color: "hsl(60, 22%, 70%)",
     sample: hatSample,
     spread: 0.32,
     intensity: 0.3,
@@ -168,15 +170,18 @@ const mixHslColors = (base: string, accent: string, ratio: number): string => {
 
 const midiToFrequency = (midi: number) => 440 * Math.pow(2, (midi - 69) / 12);
 
-// Main container with Spotify-like gradient background
+// Main container with Spotify-like gradient background - now sticky full-page slide
 const HeroContainer = styled.section<{ $background?: string }>`
   width: 100%;
-  min-height: 85vh;
+  height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  position: relative;
-  background: ${(props) => props.$background ?? 'transparent'};
+  position: sticky;
+  top: 0;
+  /* Pull up to compensate for .main-content padding-top (64px) */
+  margin-top: -64px;
+  background: ${(props) => props.$background ?? "transparent"};
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -184,6 +189,7 @@ const HeroContainer = styled.section<{ $background?: string }>`
   padding: 0;
   /* Ensure this container receives all mouse events */
   cursor: default;
+  z-index: 1;
 `;
 
 // Waveform container that spans the entire width of the page as a background element
@@ -209,20 +215,20 @@ const BackdropImage = styled.div<{ $image?: string; $grayscale?: boolean }>`
   position: absolute;
   inset: 0;
   background-image: ${(props) =>
-    props.$image ? `url(${props.$image})` : `url(${heroBackdrop})`};
+    props.$image ? `url(${props.$image})` : "none"};
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   z-index: 0;
   pointer-events: none;
-  filter: ${(props) => (props.$grayscale ? 'grayscale(1)' : 'none')};
+  filter: ${(props) => (props.$grayscale ? "grayscale(1)" : "none")};
 `;
 
 // Gradient overlay sits above image, below waves/content
 const GradientOverlay = styled.div<{ $background?: string }>`
   position: absolute;
   inset: 0;
-  background: ${(p) => p.$background ?? 'transparent'};
+  background: ${(p) => p.$background ?? "transparent"};
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -279,7 +285,7 @@ const HeroTextBlock = styled.div`
 
 // Main title - "IMPACT REPORT"
 const MainTitle = styled.h1`
-  font-family: 'Airwaves', sans-serif;
+  font-family: "Airwaves", sans-serif;
   font-size: clamp(4rem, 8vw, 7rem);
   font-weight: 800;
   color: white;
@@ -295,7 +301,7 @@ const MainTitle = styled.h1`
 
 // Subtitle - "GUITARS OVER GUNS"
 const SubtitleText = styled.h2`
-  font-family: 'Airwaves', sans-serif;
+  font-family: "Airwaves", sans-serif;
   font-size: clamp(2rem, 3vw, 2.5rem);
   font-weight: 700;
   color: rgba(119, 221, 171, 0.8);
@@ -306,13 +312,21 @@ const SubtitleText = styled.h2`
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   pointer-events: none; /* Let events pass through */
   letter-spacing: 0.05em;
+  text-decoration: none;
+  border: none;
+
+  &::after,
+  &::before {
+    display: none;
+    content: none;
+  }
 `;
 
 // Green underline
-const TitleUnderline = styled.div`
+const TitleUnderline = styled.div<{ $color?: string }>`
   width: 100px;
   height: 4px;
-  background-color: rgba(119, 221, 171, 0.8);
+  background-color: ${(p) => p.$color || "rgba(119, 221, 171, 0.8)"};
   margin: 1.5rem 0;
   transform: scaleX(0);
   transform-origin: left;
@@ -324,7 +338,7 @@ const TitleUnderline = styled.div`
 const ReportYear = styled.div`
   font-size: 2.2rem;
   color: var(--spotify-orange, #e9bb4d);
-  font-family: 'Century Gothic-Bold', 'Arial', sans-serif;
+  font-family: "Century Gothic-Bold", "Arial", sans-serif;
   font-weight: 500;
   margin-top: 1rem;
   margin-bottom: 3rem;
@@ -332,6 +346,14 @@ const ReportYear = styled.div`
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   pointer-events: none; /* Let events pass through */
   letter-spacing: 0.02em;
+  border: none;
+  text-decoration: none;
+
+  &::after,
+  &::before {
+    display: none;
+    content: none;
+  }
 `;
 
 // Button container
@@ -345,11 +367,15 @@ const ButtonContainer = styled.div`
 `;
 
 // Primary button styling (more Spotify-like)
-const PrimaryButton = styled.button`
-  background: var(--spotify-blue, #1946f5);
-  border: none;
+const PrimaryButton = styled.button<{
+  $bgColor?: string;
+  $hoverBgColor?: string;
+  $textColor?: string;
+}>`
+  background: ${(p) => p.$bgColor || "var(--spotify-blue, #1946f5)"};
+  border: 1px solid ${(p) => p.$textColor || "white"};
   border-radius: 500px;
-  color: white;
+  color: ${(p) => p.$textColor || "white"};
   cursor: pointer;
   font-family: var(--font-body);
   font-weight: 700;
@@ -365,18 +391,22 @@ const PrimaryButton = styled.button`
   letter-spacing: 0.02em;
 
   &:hover {
-    background: var(--spotify-purple, #68369a);
+    background: ${(p) => p.$hoverBgColor || "var(--spotify-purple, #68369a)"};
     transform: scale(1.05);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
   }
 `;
 
 // Secondary button styling (more Spotify-like)
-const SecondaryButton = styled.button`
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+const SecondaryButton = styled.button<{
+  $bgColor?: string;
+  $hoverBgColor?: string;
+  $textColor?: string;
+}>`
+  background: ${(p) => p.$bgColor || "rgba(255, 255, 255, 0.1)"};
+  border: 1px solid ${(p) => p.$textColor || "white"};
   border-radius: 500px;
-  color: white;
+  color: ${(p) => p.$textColor || "white"};
   cursor: pointer;
   font-family: var(--font-body);
   font-weight: 700;
@@ -389,8 +419,7 @@ const SecondaryButton = styled.button`
   letter-spacing: 0.02em;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
+    background: ${(p) => p.$hoverBgColor || "rgba(255, 255, 255, 0.2)"};
     transform: scale(1.05);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
   }
@@ -399,7 +428,7 @@ const SecondaryButton = styled.button`
 // Tagline – brand: "choose your sound"
 const Tagline = styled.div`
   margin-top: 0.75rem;
-  font-family: 'Airwaves', sans-serif;
+  font-family: "Airwaves", sans-serif;
   font-weight: 800;
   letter-spacing: 0.08em;
   font-size: clamp(0.9rem, 1.6vw, 1.1rem);
@@ -417,11 +446,15 @@ const ChipsRow = styled.div`
   pointer-events: none;
 `;
 
-const Chip = styled.span`
+const Chip = styled.span<{
+  $bgColor?: string;
+  $borderColor?: string;
+  $textColor?: string;
+}>`
   pointer-events: auto;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
+  background: ${(p) => p.$bgColor || "rgba(255, 255, 255, 0.08)"};
+  border: 1px solid ${(p) => p.$borderColor || "rgba(255, 255, 255, 0.2)"};
+  color: ${(p) => p.$textColor || "white"};
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 0.85rem;
@@ -429,7 +462,9 @@ const Chip = styled.span`
   border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 
   &:hover {
     background: rgba(255, 255, 255, 0.14);
@@ -503,7 +538,9 @@ const SequencerToggle = styled.button`
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.15);
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 
   &:hover {
     background: rgba(0, 0, 0, 0.75);
@@ -534,7 +571,7 @@ const SequencerTip = styled.div`
   animation: ${tipPulse} 2.2s ease-in-out infinite;
 
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 100%;
     left: 30%;
@@ -571,7 +608,9 @@ const TransportButton = styled.button`
   background: rgba(255, 255, 255, 0.08);
   color: white;
   cursor: pointer;
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 
   &:hover {
     transform: translateY(-1px);
@@ -625,10 +664,12 @@ const TransportSwitch = styled.button<{ $active: boolean }>`
   padding: 0.3rem 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: ${(p) =>
-    p.$active ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.05)'};
+    p.$active ? "rgba(255, 255, 255, 0.18)" : "rgba(255, 255, 255, 0.05)"};
   color: white;
   cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
 
   &:hover {
     transform: translateY(-1px);
@@ -666,7 +707,7 @@ const FloatingTooltip = styled.div`
   z-index: 20;
 
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 100%;
     left: 50%;
@@ -742,15 +783,19 @@ const StepButton = styled.button<{
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: ${(p) =>
-    p.$active ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.08)'};
+    p.$active ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 255, 255, 0.08)"};
   opacity: ${(p) => (p.$current ? 1 : 0.7)};
   box-shadow: ${(p) =>
     p.$current
-      ? '0 0 8px rgba(255, 255, 255, 0.35)'
-      : '0 1px 4px rgba(0, 0, 0, 0.4)'};
-  transform: ${(p) => (p.$current ? 'translateY(-1px)' : 'none')};
-  transition: background 0.15s ease, transform 0.15s ease,
-    box-shadow 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+      ? "0 0 8px rgba(255, 255, 255, 0.35)"
+      : "0 1px 4px rgba(0, 0, 0, 0.4)"};
+  transform: ${(p) => (p.$current ? "translateY(-1px)" : "none")};
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease,
+    border-color 0.15s ease;
   cursor: pointer;
 
   &:focus-visible {
@@ -789,19 +834,37 @@ const VisuallyHidden = styled.span`
   white-space: nowrap;
   border: 0;
 `;
-function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<HeroContent> } = {}): JSX.Element {
-  const { previewMode = false, heroOverride } = props;
-  // In preview mode, keep the static visuals (including waveform) but skip heavy JS/audio animation
-  const disableAnimations = previewMode;
-  const [hero, setHero] = useState<HeroContent | null>(null);
-  const [loading, setLoading] = useState(!previewMode);
+interface HeroSectionProps {
+  /** Data passed directly from parent - used for production */
+  heroData?: HeroContent;
+  /** Preview mode for admin editor */
+  previewMode?: boolean;
+  /** Override data for admin preview */
+  heroOverride?: Partial<HeroContent>;
+}
+
+function HeroSection(props: HeroSectionProps = {}): JSX.Element {
+  const { heroData, previewMode = false, heroOverride } = props;
+  // In preview mode, disable audio and sequencer but keep waveform animation running
+  const disableAudio = previewMode;
+  const disableSequencer = previewMode;
+  // Entrance animations (text fly-in) disabled in preview for faster updates
+  const disableEntranceAnimations = previewMode;
+  // Waveform animation should always run (unless reduced motion is preferred)
+  const disableWaveformAnimation = false;
+  // Use heroData if provided (production), otherwise manage state internally (for backward compatibility)
+  const [hero, setHero] = useState<HeroContent | null>(heroData || null);
+  const [loading, setLoading] = useState(!previewMode && !heroData);
   const [error, setError] = useState(false);
   const padConfigMap = useMemo(
     () =>
-      PAD_CONFIG.reduce((acc, pad) => {
-        acc[pad.id] = pad;
-        return acc;
-      }, {} as Record<PadId, PadConfig>),
+      PAD_CONFIG.reduce(
+        (acc, pad) => {
+          acc[pad.id] = pad;
+          return acc;
+        },
+        {} as Record<PadId, PadConfig>,
+      ),
     [],
   );
 
@@ -835,9 +898,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
     createPadRecord<AudioBuffer | null>(null),
   );
   const padBurstsRef = useRef<PadBurst[]>([]);
-  const padTriggerTimesRef = useRef<Record<PadId, number>>(
-    createPadRecord(0),
-  );
+  const padTriggerTimesRef = useRef<Record<PadId, number>>(createPadRecord(0));
   const sparkTimeoutsRef = useRef<number[]>([]);
   const [padSparks, setPadSparks] = useState<PadSparkInstance[]>([]);
   const [sequencerPattern, setSequencerPattern] =
@@ -849,7 +910,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   const playheadRef = useRef(0);
   const sequencerProgressRef = useRef(0);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [srMessage, setSrMessage] = useState('');
+  const [srMessage, setSrMessage] = useState("");
   const [sequencerOpen, setSequencerOpen] = useState(false);
   const [hasOpenedSequencer, setHasOpenedSequencer] = useState(false);
   const [hasPlayedGroove, setHasPlayedGroove] = useState(false);
@@ -857,7 +918,9 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   const [bassEnabled, setBassEnabled] = useState(true);
   const melodyEnabledRef = useRef(true);
   const bassEnabledRef = useRef(true);
-  const [tooltipStage, setTooltipStage] = useState<'play' | 'toggles' | 'grid' | 'done'>('play');
+  const [tooltipStage, setTooltipStage] = useState<
+    "play" | "toggles" | "grid" | "done"
+  >("play");
 
   // Color function: dynamic HSL cycling with ripple hue offsets
   const getWaveBarColor = useCallback((index: number, total: number) => {
@@ -906,9 +969,9 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
 
   useEffect(() => {
     if (!srMessage) return undefined;
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === "undefined") return undefined;
     const timeout = window.setTimeout(() => {
-      setSrMessage('');
+      setSrMessage("");
     }, 900);
     return () => {
       window.clearTimeout(timeout);
@@ -916,8 +979,8 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   }, [srMessage]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (typeof window === "undefined") return undefined;
+    const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
     const applyPreference = (matches: boolean) => {
       setPrefersReducedMotion(matches);
       if (matches) {
@@ -928,10 +991,10 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
     const listener = (event: MediaQueryListEvent) => {
       applyPreference(event.matches);
     };
-    if (typeof mql.addEventListener === 'function') {
-      mql.addEventListener('change', listener);
+    if (typeof mql.addEventListener === "function") {
+      mql.addEventListener("change", listener);
       return () => {
-        mql.removeEventListener('change', listener);
+        mql.removeEventListener("change", listener);
       };
     }
     mql.addListener(listener);
@@ -941,15 +1004,15 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   }, []);
 
   useEffect(() => {
-    if (typeof document === 'undefined') return undefined;
+    if (typeof document === "undefined") return undefined;
     const handleVisibility = () => {
       if (document.hidden) {
         setIsPlaying(false);
       }
     };
-    document.addEventListener('visibilitychange', handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 
@@ -960,13 +1023,14 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   }, [isPlaying]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     const withWebkit = window as typeof window & {
       webkitAudioContext?: typeof AudioContext;
     };
-    const AudioContextCtor = window.AudioContext || withWebkit.webkitAudioContext;
+    const AudioContextCtor =
+      window.AudioContext || withWebkit.webkitAudioContext;
     if (!AudioContextCtor) {
-      console.error('[hero] audio context unavailable');
+      console.error("[hero] audio context unavailable");
       return;
     }
     const audioCtx = new AudioContextCtor();
@@ -984,7 +1048,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
           }),
         );
       } catch (error) {
-        console.error('[hero] pad audio failed to load', error);
+        console.error("[hero] pad audio failed to load", error);
       }
     };
 
@@ -995,7 +1059,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
       Object.keys(padBuffersRef.current).forEach((key) => {
         padBuffersRef.current[key as PadId] = null;
       });
-      if (typeof audioCtx.close === 'function') {
+      if (typeof audioCtx.close === "function") {
         audioCtx.close();
       }
     };
@@ -1012,7 +1076,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
 
   // Initialize wave animatables - using createAnimatable for better performance
   const initializeWaveAnimatables = useCallback(() => {
-    const waveBars = document.querySelectorAll('.wave-bar');
+    const waveBars = document.querySelectorAll(".wave-bar");
     if (!waveBars.length) return;
 
     // Clear previous animatables
@@ -1024,7 +1088,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
         opacity: 0.7,
         scale: 1,
         scaleY: 0.05,
-        ease: 'out(4)',
+        ease: "out(4)",
       });
 
       waveAnimatablesRef.current.push({
@@ -1036,141 +1100,139 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
 
       // ensure no CSS keyframe animation fights our JS loop
       const el = bar as HTMLElement;
-      el.style.animation = 'none';
+      el.style.animation = "none";
     });
   }, []);
 
-  const triggerPad = useCallback(
-    async (pad: PadConfig, velocity = 1) => {
-      const now = performance.now();
-      const lastTrigger = padTriggerTimesRef.current[pad.id];
-      if (lastTrigger && now - lastTrigger < PAD_TRIGGER_COOLDOWN_MS) {
-        return;
-      }
-      padTriggerTimesRef.current[pad.id] = now;
+  const triggerPad = useCallback(async (pad: PadConfig, velocity = 1) => {
+    const now = performance.now();
+    const lastTrigger = padTriggerTimesRef.current[pad.id];
+    if (lastTrigger && now - lastTrigger < PAD_TRIGGER_COOLDOWN_MS) {
+      return;
+    }
+    padTriggerTimesRef.current[pad.id] = now;
 
-      const ctx = audioContextRef.current;
-      const buffer = padBuffersRef.current[pad.id];
-      if (ctx && buffer) {
-        if (ctx.state === 'suspended') {
-          try {
-            await ctx.resume();
-          } catch (error) {
-            console.warn('[hero] audio resume failed', error);
-          }
+    const ctx = audioContextRef.current;
+    const buffer = padBuffersRef.current[pad.id];
+    if (ctx && buffer) {
+      if (ctx.state === "suspended") {
+        try {
+          await ctx.resume();
+        } catch (error) {
+          console.warn("[hero] audio resume failed", error);
         }
-        const gainNode = ctx.createGain();
-        gainNode.gain.value = 0.85;
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(gainNode).connect(ctx.destination);
-        source.start();
+      }
+      const gainNode = ctx.createGain();
+      gainNode.gain.value = 0.85;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(gainNode).connect(ctx.destination);
+      source.start();
+    }
+
+    const burst: PadBurst = {
+      id: `${pad.id}-${now}`,
+      padId: pad.id,
+      start: now,
+      duration: PAD_BURST_DURATION,
+      center: 0.12 + Math.random() * 0.76,
+      radius: pad.spread,
+      amplitude: pad.intensity * velocity + Math.random() * 0.35,
+      color: pad.color,
+    };
+    padBurstsRef.current = [
+      ...padBurstsRef.current.slice(-(MAX_PAD_BURSTS - 1)),
+      burst,
+    ];
+
+    const spark: PadSparkInstance = {
+      id: now + Math.random(),
+      left: 15 + Math.random() * 70,
+      padId: pad.id,
+      color: pad.color,
+      size: 6 + Math.random() * 8,
+    };
+    setPadSparks((prev) => [...prev.slice(-5), spark]);
+    if (typeof window !== "undefined") {
+      const timeoutId = window.setTimeout(() => {
+        setPadSparks((prev) => prev.filter((s) => s.id !== spark.id));
+        sparkTimeoutsRef.current = sparkTimeoutsRef.current.filter(
+          (existingId) => existingId !== timeoutId,
+        );
+      }, 900);
+      sparkTimeoutsRef.current.push(timeoutId);
+    }
+  }, []);
+
+  const triggerSynthVoice = useCallback(
+    (kind: "melody" | "bass", midi: number) => {
+      const ctx = audioContextRef.current;
+      if (!ctx) return;
+      if (ctx.state === "suspended") {
+        ctx.resume().catch((err) => {
+          console.warn("[hero] synth resume failed", err);
+        });
+      }
+      const frequency = midiToFrequency(midi);
+      const now = ctx.currentTime;
+      const duration = kind === "melody" ? 0.25 : 0.6;
+      const peak = kind === "melody" ? 0.18 : 0.32;
+
+      const mainOsc = ctx.createOscillator();
+      mainOsc.type = kind === "melody" ? "triangle" : "sine";
+      mainOsc.frequency.value = frequency;
+
+      let subOsc: OscillatorNode | null = null;
+      let subGain: GainNode | null = null;
+      if (kind === "bass") {
+        subOsc = ctx.createOscillator();
+        subOsc.type = "sine";
+        subOsc.frequency.value = frequency / 2;
+        subGain = ctx.createGain();
+        subGain.gain.value = 0.45;
       }
 
-      const burst: PadBurst = {
-        id: `${pad.id}-${now}`,
-        padId: pad.id,
-        start: now,
-        duration: PAD_BURST_DURATION,
-        center: 0.12 + Math.random() * 0.76,
-        radius: pad.spread,
-        amplitude: pad.intensity * velocity + Math.random() * 0.35,
-        color: pad.color,
-      };
-      padBurstsRef.current = [
-        ...padBurstsRef.current.slice(-(MAX_PAD_BURSTS - 1)),
-        burst,
-      ];
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-      const spark: PadSparkInstance = {
-        id: now + Math.random(),
-        left: 15 + Math.random() * 70,
-        padId: pad.id,
-        color: pad.color,
-        size: 6 + Math.random() * 8,
-      };
-      setPadSparks((prev) => [...prev.slice(-5), spark]);
-      if (typeof window !== 'undefined') {
-        const timeoutId = window.setTimeout(() => {
-          setPadSparks((prev) => prev.filter((s) => s.id !== spark.id));
-          sparkTimeoutsRef.current = sparkTimeoutsRef.current.filter(
-            (existingId) => existingId !== timeoutId,
-          );
-        }, 900);
-        sparkTimeoutsRef.current.push(timeoutId);
+      const filter = ctx.createBiquadFilter();
+      filter.type = kind === "melody" ? "lowpass" : "lowshelf";
+      if (kind === "melody") {
+        filter.frequency.setValueAtTime(1800, now);
+      } else {
+        filter.frequency?.setValueAtTime(150, now);
+        filter.gain?.setValueAtTime(5, now);
+        filter.Q?.setValueAtTime(0.7, now);
       }
+
+      mainOsc.connect(gain);
+      if (subOsc && subGain) {
+        subOsc.connect(subGain).connect(gain);
+      }
+      gain.connect(filter).connect(ctx.destination);
+
+      mainOsc.start(now);
+      mainOsc.stop(now + duration + 0.1);
+      if (subOsc) {
+        subOsc.start(now);
+        subOsc.stop(now + duration + 0.1);
+      }
+
+      mainOsc.onended = () => {
+        gain.disconnect();
+        filter.disconnect();
+        if (subGain) {
+          subGain.disconnect();
+        }
+      };
     },
     [],
   );
 
-  const triggerSynthVoice = useCallback((kind: 'melody' | 'bass', midi: number) => {
-    const ctx = audioContextRef.current;
-    if (!ctx) return;
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch((err) => {
-        console.warn('[hero] synth resume failed', err);
-      });
-    }
-    const frequency = midiToFrequency(midi);
-    const now = ctx.currentTime;
-    const duration = kind === 'melody' ? 0.25 : 0.6;
-    const peak = kind === 'melody' ? 0.18 : 0.32;
-
-    const mainOsc = ctx.createOscillator();
-    mainOsc.type = kind === 'melody' ? 'triangle' : 'sine';
-    mainOsc.frequency.value = frequency;
-
-    let subOsc: OscillatorNode | null = null;
-    let subGain: GainNode | null = null;
-    if (kind === 'bass') {
-      subOsc = ctx.createOscillator();
-      subOsc.type = 'sine';
-      subOsc.frequency.value = frequency / 2;
-      subGain = ctx.createGain();
-      subGain.gain.value = 0.45;
-    }
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(peak, now + 0.04);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = kind === 'melody' ? 'lowpass' : 'lowshelf';
-    if (kind === 'melody') {
-      filter.frequency.setValueAtTime(1800, now);
-    } else {
-      filter.frequency?.setValueAtTime(150, now);
-      filter.gain?.setValueAtTime(5, now);
-      filter.Q?.setValueAtTime(0.7, now);
-    }
-
-    mainOsc.connect(gain);
-    if (subOsc && subGain) {
-      subOsc.connect(subGain).connect(gain);
-    }
-    gain.connect(filter).connect(ctx.destination);
-
-    mainOsc.start(now);
-    mainOsc.stop(now + duration + 0.1);
-    if (subOsc) {
-      subOsc.start(now);
-      subOsc.stop(now + duration + 0.1);
-    }
-
-    mainOsc.onended = () => {
-      gain.disconnect();
-      filter.disconnect();
-      if (subGain) {
-        subGain.disconnect();
-      }
-    };
-  },
-    [],
-  );
-
   const focusStepButton = useCallback((padId: PadId, index: number) => {
-    if (typeof document === 'undefined') return;
+    if (typeof document === "undefined") return;
     const element = document.getElementById(stepDomId(padId, index));
     if (element instanceof HTMLButtonElement) {
       element.focus();
@@ -1186,13 +1248,13 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
         const track = padConfigMap[padId];
         if (track) {
           setSrMessage(
-            `${track.label} step ${stepIndex + 1} ${nextRow[stepIndex] ? 'enabled' : 'muted'
+            `${track.label} step ${stepIndex + 1} ${nextRow[stepIndex] ? "enabled" : "muted"
             }`,
           );
         }
         return nextPattern;
       });
-      setTooltipStage((stage) => (stage === 'grid' ? 'done' : stage));
+      setTooltipStage((stage) => (stage === "grid" ? "done" : stage));
     },
     [padConfigMap],
   );
@@ -1204,22 +1266,22 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
       stepIndex: number,
     ) => {
       const trackIndex = PAD_CONFIG.findIndex((pad) => pad.id === padId);
-      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
         event.preventDefault();
-        const delta = event.key === 'ArrowRight' ? 1 : -1;
+        const delta = event.key === "ArrowRight" ? 1 : -1;
         const nextStep = (stepIndex + delta + TOTAL_STEPS) % TOTAL_STEPS;
         focusStepButton(padId, nextStep);
         return;
       }
-      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
         event.preventDefault();
-        const delta = event.key === 'ArrowDown' ? 1 : -1;
+        const delta = event.key === "ArrowDown" ? 1 : -1;
         const nextTrackIndex =
           (trackIndex + delta + PAD_CONFIG.length) % PAD_CONFIG.length;
         focusStepButton(PAD_CONFIG[nextTrackIndex].id, stepIndex);
         return;
       }
-      if (event.key === ' ') {
+      if (event.key === " ") {
         event.preventDefault();
         handleStepToggle(padId, stepIndex);
       }
@@ -1229,17 +1291,17 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
 
   const handleClearPattern = useCallback(() => {
     setSequencerPattern(createEmptyPattern());
-    setSrMessage('Pattern cleared');
+    setSrMessage("Pattern cleared");
   }, []);
 
   const handleMelodyToggle = useCallback(() => {
     setMelodyEnabled((prev) => !prev);
-    setTooltipStage((stage) => (stage === 'toggles' ? 'grid' : stage));
+    setTooltipStage((stage) => (stage === "toggles" ? "grid" : stage));
   }, []);
 
   const handleBassToggle = useCallback(() => {
     setBassEnabled((prev) => !prev);
-    setTooltipStage((stage) => (stage === 'toggles' ? 'grid' : stage));
+    setTooltipStage((stage) => (stage === "toggles" ? "grid" : stage));
   }, []);
 
   const handleTransportToggle = useCallback(() => {
@@ -1247,7 +1309,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
       const next = !prev;
       if (next) {
         setHasPlayedGroove(true);
-        setTooltipStage((stage) => (stage === 'play' ? 'toggles' : stage));
+        setTooltipStage((stage) => (stage === "play" ? "toggles" : stage));
       }
       return next;
     });
@@ -1354,8 +1416,8 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
 
           // Transform-only updates (no layout): scaleY and opacity
           animatable
-            .scaleY(scaleY, 80, 'linear')
-            .opacity(0.18 + amplitude * 0.65, 120, 'linear');
+            .scaleY(scaleY, 80, "linear")
+            .opacity(0.18 + amplitude * 0.65, 120, "linear");
 
           // Update color directly for richer palettes
           const elem = el as HTMLElement;
@@ -1383,7 +1445,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   }, [getWaveBarColor, valueNoise1D]);
 
   useEffect(() => {
-    if (disableAnimations) return undefined;
+    if (disableSequencer) return undefined;
     let rafId: number | null = null;
     let lastTime = performance.now();
 
@@ -1408,18 +1470,12 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
             }
           });
           const melodyNote = MELODY_SEQUENCE[playheadRef.current];
-          if (
-            melodyEnabledRef.current &&
-            typeof melodyNote === 'number'
-          ) {
-            triggerSynthVoice('melody', melodyNote);
+          if (melodyEnabledRef.current && typeof melodyNote === "number") {
+            triggerSynthVoice("melody", melodyNote);
           }
           const bassNote = BASS_SEQUENCE[playheadRef.current];
-          if (
-            bassEnabledRef.current &&
-            typeof bassNote === 'number'
-          ) {
-            triggerSynthVoice('bass', bassNote);
+          if (bassEnabledRef.current && typeof bassNote === "number") {
+            triggerSynthVoice("bass", bassNote);
           }
         }
       }
@@ -1432,80 +1488,80 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
         cancelAnimationFrame(rafId);
       }
     };
-  }, [disableAnimations, triggerPad, triggerSynthVoice]);
+  }, [disableSequencer, triggerPad, triggerSynthVoice]);
 
   // Set up everything on mount and handle cleanup
   useEffect(() => {
-    // Load hero content unless disabled (admin preview can pass data instead)
-    if (!previewMode) {
-      fetchHeroContent()
-        .then((data) => {
-          if (data) {
-            setHero(data);
-            setError(false);
-          } else {
-            // Data doesn't exist yet (404) - not an error, just use defaults
-            setError(false);
-          }
-          setLoading(false);
-        })
-        .catch((err) => {
-          // Only set error for actual network/API errors, not 404s
-          console.error('[HeroSection] Error fetching hero content', err);
+    // Load hero content unless heroData is provided or in preview mode
+    if (heroData) {
+      // heroData was provided by parent - use it directly
+      setHero(heroData);
+      setLoading(false);
+    } else if (!previewMode) {
+      // Backward compatibility: fetch data if no heroData provided
+      fetchHeroContent().then((data) => {
+        if (data) {
+          setHero(data);
+        } else {
           setError(true);
-          setLoading(false);
-        });
+        }
+        setLoading(false);
+      });
     } else if (heroOverride) {
-      setHero((prev) => ({ ...(prev ?? ({} as HeroContent)), ...(heroOverride as HeroContent) }));
+      // Preview mode with override
+      setHero((prev) => ({
+        ...(prev ?? ({} as HeroContent)),
+        ...(heroOverride as HeroContent),
+      }));
       setLoading(false);
     }
 
     // Initialize animations for text elements using direct AnimeJS calls
-    if (!disableAnimations && titleRef.current) {
+    if (!disableEntranceAnimations && titleRef.current) {
       animate(titleRef.current, {
         opacity: [0, 1],
         translateY: [50, 0],
         duration: 1000,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
       });
     }
 
-    if (!disableAnimations && underlineRef.current) {
+    if (!disableEntranceAnimations && underlineRef.current) {
       animate(underlineRef.current, {
         scaleX: [0, 1],
         opacity: [0, 1],
         duration: 800,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 200,
       });
     }
 
-    if (!disableAnimations && subtitleRef.current) {
+    if (!disableEntranceAnimations && subtitleRef.current) {
       animate(subtitleRef.current, {
         opacity: [0, 1],
         translateY: [20, 0],
         duration: 600,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 400,
       });
     }
 
-    if (!disableAnimations && yearRef.current) {
+    if (!disableEntranceAnimations && yearRef.current) {
       animate(yearRef.current, {
         opacity: [0, 1],
         translateY: [20, 0],
         duration: 600,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 600,
       });
     }
 
-    if (!disableAnimations && taglineRef.current) {
+    if (!disableEntranceAnimations && taglineRef.current) {
       animate(taglineRef.current, {
         opacity: [0, 1],
         translateY: [10, 0],
         duration: 500,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 700,
       });
     }
@@ -1516,24 +1572,27 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
       secondaryButtonRef.current,
     ].filter((button): button is HTMLButtonElement => button !== null);
 
-    if (!disableAnimations && buttons.length > 0) {
+    if (!disableEntranceAnimations && buttons.length > 0) {
       animate(buttons, {
         opacity: [0, 1],
         translateY: [20, 0],
         duration: 600,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: stagger(200, { start: 800 }),
       });
     }
 
-    // Animate wave background
-    if (!disableAnimations && waveBackgroundRef.current) {
+    // Animate wave background (entrance fade-in)
+    if (!disableEntranceAnimations && waveBackgroundRef.current) {
       animate(waveBackgroundRef.current, {
         opacity: [0, 0.7],
         duration: 1200,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 1000,
       });
+    } else if (waveBackgroundRef.current) {
+      // In preview mode, show waveform immediately
+      waveBackgroundRef.current.style.opacity = "0.7";
     }
 
     // Set container ref for events
@@ -1545,15 +1604,15 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
 
     // Initialize wave animatables and start animation loop
     setTimeout(() => {
-      if (!disableAnimations) {
+      if (!disableWaveformAnimation) {
         initializeWaveAnimatables();
       }
       // Respect reduced motion preference
       const prefersReduced =
-        typeof window !== 'undefined' &&
-        typeof window.matchMedia !== 'undefined' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if (!disableAnimations && !prefersReduced) {
+        typeof window !== "undefined" &&
+        typeof window.matchMedia !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!disableWaveformAnimation && !prefersReduced) {
         startAnimationLoop();
       }
     }, 100);
@@ -1564,12 +1623,12 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
       visibilityObserver = new IntersectionObserver(
         ([entry]) => {
           const prefersReduced =
-            typeof window !== 'undefined' &&
-            typeof window.matchMedia !== 'undefined' &&
-            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            typeof window !== "undefined" &&
+            typeof window.matchMedia !== "undefined" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
           if (entry.isIntersecting) {
             isVisibleRef.current = true;
-            if (!disableAnimations && !prefersReduced) {
+            if (!disableWaveformAnimation && !prefersReduced) {
               startAnimationLoop();
             }
           } else {
@@ -1597,22 +1656,22 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
     if (heroContainer) {
       // Use explicit event listeners without throttling in the listener itself
       // The throttling is handled inside the function
-      heroContainer.addEventListener('mousemove', handleMouseMove);
+      heroContainer.addEventListener("mousemove", handleMouseMove);
       // Simple mouseleave handler
-      heroContainer.addEventListener('mouseleave', mouseLeaveHandler);
+      heroContainer.addEventListener("mouseleave", mouseLeaveHandler);
 
       // Add resize listener
-      window.addEventListener('resize', handleResize);
+      window.addEventListener("resize", handleResize);
     }
 
     // Cleanup function
     return () => {
       if (heroContainer) {
-        heroContainer.removeEventListener('mousemove', handleMouseMove);
-        heroContainer.removeEventListener('mouseleave', mouseLeaveHandler);
+        heroContainer.removeEventListener("mousemove", handleMouseMove);
+        heroContainer.removeEventListener("mouseleave", mouseLeaveHandler);
       }
 
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
       if (animationFrameRef.current != null) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -1627,45 +1686,120 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
     handleMouseMove,
     mouseLeaveHandler,
     startAnimationLoop,
+    heroData,
     previewMode,
     heroOverride,
+  ]);
+
+  // Re-initialize wave animatables when hero data loads (fixes race condition where
+  // the initial timeout fires before wave bars are rendered)
+  useEffect(() => {
+    if (!hero || disableWaveformAnimation || prefersReducedMotion) return;
+
+    // Check if animatables are missing but wave bars now exist
+    const waveBars = document.querySelectorAll(".wave-bar");
+    const needsInit =
+      waveBars.length > 0 && waveAnimatablesRef.current.length === 0;
+
+    // Also check if container ref and visibility observer need to be set up
+    const heroContainer = waveBackgroundRef.current?.parentElement;
+    const needsContainerSetup = heroContainer && !containerRef.current;
+
+    if (!needsInit && !needsContainerSetup) return;
+
+    let visibilityObserver: IntersectionObserver | null = null;
+
+    const timeoutId = window.setTimeout(() => {
+      // Initialize wave animatables if needed
+      if (needsInit) {
+        initializeWaveAnimatables();
+        startAnimationLoop();
+      }
+
+      // Set up container ref and observers if needed
+      if (needsContainerSetup && heroContainer) {
+        containerRef.current = heroContainer;
+        containerBoundsRef.current = heroContainer.getBoundingClientRect();
+
+        // Set up event listeners
+        heroContainer.addEventListener("mousemove", handleMouseMove);
+        heroContainer.addEventListener("mouseleave", mouseLeaveHandler);
+
+        // Set up visibility observer
+        visibilityObserver = new IntersectionObserver(
+          ([entry]) => {
+            if (entry.isIntersecting) {
+              isVisibleRef.current = true;
+              if (!disableWaveformAnimation && !prefersReducedMotion) {
+                startAnimationLoop();
+              }
+            } else {
+              isVisibleRef.current = false;
+              if (animationFrameRef.current != null) {
+                cancelAnimationFrame(animationFrameRef.current);
+                animationFrameRef.current = null;
+              }
+            }
+          },
+          { threshold: 0.1 },
+        );
+        visibilityObserver.observe(heroContainer);
+      }
+    }, 50);
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (visibilityObserver) {
+        visibilityObserver.disconnect();
+      }
+      // Note: event listeners will be cleaned up by the main useEffect's cleanup
+    };
+  }, [
+    hero,
+    disableWaveformAnimation,
+    prefersReducedMotion,
+    initializeWaveAnimatables,
+    startAnimationLoop,
+    handleMouseMove,
+    mouseLeaveHandler,
   ]);
 
   // Ensure entrance animations run once when hero content becomes available
   useEffect(() => {
     if (!hero) return;
 
-    // If animations are disabled, ensure all elements are visible immediately
-    if (disableAnimations) {
+    // If entrance animations are disabled, ensure all elements are visible immediately
+    if (disableEntranceAnimations) {
       if (titleRef.current) {
-        titleRef.current.style.opacity = '1';
-        titleRef.current.style.transform = 'none';
+        titleRef.current.style.opacity = "1";
+        titleRef.current.style.transform = "none";
       }
       if (underlineRef.current) {
-        underlineRef.current.style.opacity = '1';
-        underlineRef.current.style.transform = 'scaleX(1)';
+        underlineRef.current.style.opacity = "1";
+        underlineRef.current.style.transform = "scaleX(1)";
       }
       if (subtitleRef.current) {
-        subtitleRef.current.style.opacity = '1';
-        subtitleRef.current.style.transform = 'none';
+        subtitleRef.current.style.opacity = "1";
+        subtitleRef.current.style.transform = "none";
       }
       if (yearRef.current) {
-        yearRef.current.style.opacity = '1';
-        yearRef.current.style.transform = 'none';
+        yearRef.current.style.opacity = "1";
+        yearRef.current.style.transform = "none";
       }
       if (taglineRef.current) {
-        taglineRef.current.style.opacity = '1';
-        taglineRef.current.style.transform = 'none';
+        taglineRef.current.style.opacity = "1";
+        taglineRef.current.style.transform = "none";
       }
-      const buttons = [primaryButtonRef.current, secondaryButtonRef.current].filter(
-        (b): b is HTMLButtonElement => b !== null,
-      );
+      const buttons = [
+        primaryButtonRef.current,
+        secondaryButtonRef.current,
+      ].filter((b): b is HTMLButtonElement => b !== null);
       buttons.forEach((btn) => {
-        btn.style.opacity = '1';
-        btn.style.transform = 'none';
+        btn.style.opacity = "1";
+        btn.style.transform = "none";
       });
       if (waveBackgroundRef.current) {
-        waveBackgroundRef.current.style.opacity = '0.7';
+        waveBackgroundRef.current.style.opacity = "0.7";
       }
       return;
     }
@@ -1682,15 +1816,15 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
           opacity: [0, 1],
           translateY: [50, 0],
           duration: 1000,
-          easing: 'easeOutExpo',
+          easing: "easeOutExpo",
         });
         hasEntranceAnimatedRef.current = true;
       } else if (hero.title) {
         // Fallback: if title exists but ref isn't ready, try again
         retryTimeoutId = window.setTimeout(() => {
           if (titleRef.current) {
-            titleRef.current.style.opacity = '1';
-            titleRef.current.style.transform = 'none';
+            titleRef.current.style.opacity = "1";
+            titleRef.current.style.transform = "none";
           }
         }, 500);
       }
@@ -1701,7 +1835,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
         scaleX: [0, 1],
         opacity: [0, 1],
         duration: 800,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 200,
       });
     }
@@ -1710,7 +1844,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
         opacity: [0, 1],
         translateY: [20, 0],
         duration: 600,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 400,
       });
     }
@@ -1719,7 +1853,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
         opacity: [0, 1],
         translateY: [20, 0],
         duration: 600,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 600,
       });
     }
@@ -1728,19 +1862,20 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
         opacity: [0, 1],
         translateY: [10, 0],
         duration: 500,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 700,
       });
     }
-    const buttons = [primaryButtonRef.current, secondaryButtonRef.current].filter(
-      (b): b is HTMLButtonElement => b != null,
-    );
+    const buttons = [
+      primaryButtonRef.current,
+      secondaryButtonRef.current,
+    ].filter((b): b is HTMLButtonElement => b != null);
     if (buttons.length > 0) {
       animate(buttons, {
         opacity: [0, 1],
         translateY: [20, 0],
         duration: 600,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: stagger(200, { start: 800 }),
       });
     }
@@ -1749,7 +1884,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
       animate(waveBackgroundRef.current, {
         opacity: [0, 0.7],
         duration: 1200,
-        easing: 'easeOutExpo',
+        easing: "easeOutExpo",
         delay: 1000,
       });
     }
@@ -1760,7 +1895,7 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
       if (timeoutId) clearTimeout(timeoutId);
       if (retryTimeoutId) clearTimeout(retryTimeoutId);
     };
-  }, [hero, disableAnimations]);
+  }, [hero, disableEntranceAnimations]);
 
   // Reduced number of wave bars for better performance
   const numWaveBars = 120;
@@ -1775,18 +1910,42 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   const secondaryCta = hero?.secondaryCta;
   const background = hero?.backgroundColor;
   const backgroundImage = hero?.backgroundImage;
-  const backgroundImageGrayscale = (hero as any)?.backgroundImageGrayscale === true;
+  const backgroundImageGrayscale =
+    (hero as any)?.backgroundImageGrayscale === true;
   const ariaLabel = (hero as any)?.ariaLabel as string | undefined;
   const titleColor = (hero as any)?.titleColor as string | undefined;
   const subtitleColor = (hero as any)?.subtitleColor as string | undefined;
   const yearColor = (hero as any)?.yearColor as string | undefined;
   const taglineColor = (hero as any)?.taglineColor as string | undefined;
   const primaryCtaColor = (hero as any)?.primaryCtaColor as string | undefined;
-  const secondaryCtaColor = (hero as any)?.secondaryCtaColor as string | undefined;
+  const secondaryCtaColor = (hero as any)?.secondaryCtaColor as
+    | string
+    | undefined;
+  // NEW: Additional customizable colors
+  const primaryCtaBgColor = (hero as any)?.primaryCtaBgColor as
+    | string
+    | undefined;
+  const primaryCtaHoverBgColor = (hero as any)?.primaryCtaHoverBgColor as
+    | string
+    | undefined;
+  const secondaryCtaBgColor = (hero as any)?.secondaryCtaBgColor as
+    | string
+    | undefined;
+  const secondaryCtaHoverBgColor = (hero as any)?.secondaryCtaHoverBgColor as
+    | string
+    | undefined;
+  const titleUnderlineColor = (hero as any)?.titleUnderlineColor as
+    | string
+    | undefined;
+  const bubbleTextColor = (hero as any)?.bubbleTextColor as string | undefined;
+  const bubbleBgColor = (hero as any)?.bubbleBgColor as string | undefined;
+  const bubbleBorderColor = (hero as any)?.bubbleBorderColor as
+    | string
+    | undefined;
   const showPlayTooltip =
-    sequencerOpen && tooltipStage === 'play' && !hasPlayedGroove;
-  const showToggleTooltip = sequencerOpen && tooltipStage === 'toggles';
-  const showGridTooltip = sequencerOpen && tooltipStage === 'grid';
+    sequencerOpen && tooltipStage === "play" && !hasPlayedGroove;
+  const showToggleTooltip = sequencerOpen && tooltipStage === "toggles";
+  const showGridTooltip = sequencerOpen && tooltipStage === "grid";
 
   const isValidGradient = (s?: string) => {
     if (!s) return false;
@@ -1800,16 +1959,16 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
       return undefined; // draw gradient via overlay to keep it above the image
     }
     if (backgroundImage) {
-      return `${gradientOk ? background : ''}${gradientOk ? ', ' : ''}url(${backgroundImage})`;
+      return `${gradientOk ? background : ""}${gradientOk ? ", " : ""}url(${backgroundImage})`;
     }
     return gradientOk ? (background as string) : undefined;
   })();
 
   if (error) {
     return (
-      <HeroContainer $background="#121212" style={{ minHeight: '50vh' }}>
+      <HeroContainer $background="#121212" style={{ minHeight: "50vh" }}>
         <HeroTextBlock>
-          <h2 style={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.5rem' }}>
+          <h2 style={{ color: "rgba(255,255,255,0.7)", fontSize: "1.5rem" }}>
             Failed to load impact report data
           </h2>
         </HeroTextBlock>
@@ -1824,7 +1983,9 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
   return (
     <HeroContainer
       $background={composedBackground}
-      aria-label={ariaLabel && ariaLabel.trim().length > 0 ? ariaLabel : undefined}
+      aria-label={
+        ariaLabel && ariaLabel.trim().length > 0 ? ariaLabel : undefined
+      }
     >
       {/* If grayscale requested, render the image as a separate layer with filter */}
       {backgroundImage && backgroundImageGrayscale && (
@@ -1863,20 +2024,22 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
               <MainTitle
                 ref={titleRef}
                 style={{
-                  opacity: disableAnimations ? 1 : undefined,
-                  transform: disableAnimations ? 'none' : undefined,
+                  opacity: disableEntranceAnimations ? 1 : undefined,
+                  transform: disableEntranceAnimations ? "none" : undefined,
                   ...(titleColor ? { color: titleColor } : {}),
                 }}
               >
                 {title}
               </MainTitle>
             )}
-            <TitleUnderline ref={underlineRef} />
+            <TitleUnderline ref={underlineRef} $color={titleUnderlineColor} />
             {subtitle && (
               <SubtitleText
                 ref={subtitleRef}
                 style={{
-                  ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
+                  ...(disableEntranceAnimations
+                    ? { opacity: 1, transform: "none" }
+                    : {}),
                   ...(subtitleColor ? { color: subtitleColor } : {}),
                 }}
               >
@@ -1887,7 +2050,9 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
               <ReportYear
                 ref={yearRef}
                 style={{
-                  ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
+                  ...(disableEntranceAnimations
+                    ? { opacity: 1, transform: "none" }
+                    : {}),
                   ...(yearColor ? { color: yearColor } : {}),
                 }}
               >
@@ -1898,7 +2063,9 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
               <Tagline
                 ref={taglineRef}
                 style={{
-                  ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
+                  ...(disableEntranceAnimations
+                    ? { opacity: 1, transform: "none" }
+                    : {}),
                   ...(taglineColor ? { color: taglineColor } : {}),
                 }}
               >
@@ -1908,8 +2075,15 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
 
             {bubbles && bubbles.length > 0 && (
               <ChipsRow>
-                {bubbles.map((city) => (
-                  <Chip key={city}>{city}</Chip>
+                {bubbles.map((city, idx) => (
+                  <Chip
+                    key={`${idx}-${city}`}
+                    $textColor={bubbleTextColor}
+                    $bgColor={bubbleBgColor}
+                    $borderColor={bubbleBorderColor}
+                  >
+                    {city}
+                  </Chip>
                 ))}
               </ChipsRow>
             )}
@@ -1920,16 +2094,19 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
                   href={primaryCta.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ textDecoration: 'none' }}
+                  style={{ textDecoration: "none" }}
                 >
                   <PrimaryButton
                     ref={primaryButtonRef}
+                    $bgColor={primaryCtaBgColor}
+                    $hoverBgColor={primaryCtaHoverBgColor}
+                    $textColor={primaryCtaColor}
                     style={{
-                      ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
-                      ...(primaryCtaColor ? { color: primaryCtaColor } : {}),
+                      ...(disableEntranceAnimations
+                        ? { opacity: 1, transform: "none" }
+                        : {}),
                     }}
                   >
-                    <span>▶</span>
                     <span>{primaryCta.label}</span>
                   </PrimaryButton>
                 </a>
@@ -1939,13 +2116,17 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
                   href={secondaryCta.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ textDecoration: 'none' }}
+                  style={{ textDecoration: "none" }}
                 >
                   <SecondaryButton
                     ref={secondaryButtonRef}
+                    $bgColor={secondaryCtaBgColor}
+                    $hoverBgColor={secondaryCtaHoverBgColor}
+                    $textColor={secondaryCtaColor}
                     style={{
-                      ...(disableAnimations ? { opacity: 1, transform: 'none' } : {}),
-                      ...(secondaryCtaColor ? { color: secondaryCtaColor } : {}),
+                      ...(disableEntranceAnimations
+                        ? { opacity: 1, transform: "none" }
+                        : {}),
                     }}
                   >
                     <span>{secondaryCta.label}</span>
@@ -1956,127 +2137,145 @@ function HeroSection(props: { previewMode?: boolean; heroOverride?: Partial<Hero
           </HeroTextBlock>
         </LeftContent>
       </ContentWrapper>
-      <SequencerFloat>
-        {!hasOpenedSequencer && (
-          <SequencerTip>Make your own sound</SequencerTip>
-        )}
-        <SequencerToggle
-          type="button"
-          aria-pressed={sequencerOpen}
-          aria-expanded={sequencerOpen}
-          onClick={handleToggleSequencer}
-        >
-          {sequencerOpen ? 'Hide groove' : 'Open groove'}
-        </SequencerToggle>
-        {sequencerOpen && (
-          <SequencerWrapper>
-            <SequencerHeader>
-              <TransportButtonWrapper>
-                <TransportButton type="button" onClick={handleTransportToggle}>
-                  {isPlaying ? 'Pause groove' : 'Play groove'}
-                </TransportButton>
-                {showPlayTooltip && (
-                  <FloatingTooltip style={{ top: '-12px', left: '50%', transform: 'translate(-50%, -110%)' }}>
-                    Click play
-                  </FloatingTooltip>
-                )}
-              </TransportButtonWrapper>
-              <TransportMeta>
-                <TransportSwitchGroup>
-                  {showToggleTooltip && (
-                    <FloatingTooltip style={{ top: '-10px', left: '50%', transform: 'translate(-50%, -120%)' }}>
-                      Toggle melody & bass
+      {/* Hide sequencer in preview mode since audio is disabled */}
+      {!disableSequencer && (
+        <SequencerFloat>
+          {!hasOpenedSequencer && (
+            <SequencerTip>Make your own sound</SequencerTip>
+          )}
+          <SequencerToggle
+            type="button"
+            aria-pressed={sequencerOpen}
+            aria-expanded={sequencerOpen}
+            onClick={handleToggleSequencer}
+          >
+            {sequencerOpen ? "Hide groove" : "Open groove"}
+          </SequencerToggle>
+          {sequencerOpen && (
+            <SequencerWrapper>
+              <SequencerHeader>
+                <TransportButtonWrapper>
+                  <TransportButton
+                    type="button"
+                    onClick={handleTransportToggle}
+                  >
+                    {isPlaying ? "Pause groove" : "Play groove"}
+                  </TransportButton>
+                  {showPlayTooltip && (
+                    <FloatingTooltip
+                      style={{
+                        top: "-12px",
+                        left: "50%",
+                        transform: "translate(-50%, -110%)",
+                      }}
+                    >
+                      Click play
                     </FloatingTooltip>
                   )}
-                  <TransportSwitch
-                    type="button"
-                    aria-pressed={melodyEnabled}
-                    $active={melodyEnabled}
-                    onClick={handleMelodyToggle}
+                </TransportButtonWrapper>
+                <TransportMeta>
+                  <TransportSwitchGroup>
+                    {showToggleTooltip && (
+                      <FloatingTooltip
+                        style={{
+                          top: "-10px",
+                          left: "50%",
+                          transform: "translate(-50%, -120%)",
+                        }}
+                      >
+                        Toggle melody & bass
+                      </FloatingTooltip>
+                    )}
+                    <TransportSwitch
+                      type="button"
+                      aria-pressed={melodyEnabled}
+                      $active={melodyEnabled}
+                      onClick={handleMelodyToggle}
+                    >
+                      Melody
+                    </TransportSwitch>
+                    <TransportSwitch
+                      type="button"
+                      aria-pressed={bassEnabled}
+                      $active={bassEnabled}
+                      onClick={handleBassToggle}
+                    >
+                      Bass
+                    </TransportSwitch>
+                  </TransportSwitchGroup>
+                  <ControlButton type="button" onClick={handleClearPattern}>
+                    Clear
+                  </ControlButton>
+                </TransportMeta>
+              </SequencerHeader>
+              <TrackStack>
+                {showGridTooltip && (
+                  <FloatingTooltip
+                    style={{
+                      top: "-10px",
+                      right: "12px",
+                      left: "auto",
+                      transform: "translateY(-100%)",
+                    }}
                   >
-                    Melody
-                  </TransportSwitch>
-                  <TransportSwitch
-                    type="button"
-                    aria-pressed={bassEnabled}
-                    $active={bassEnabled}
-                    onClick={handleBassToggle}
-                  >
-                    Bass
-                  </TransportSwitch>
-                </TransportSwitchGroup>
-                <ControlButton type="button" onClick={handleClearPattern}>
-                  Clear
-                </ControlButton>
-              </TransportMeta>
-            </SequencerHeader>
-            <TrackStack>
-              {showGridTooltip && (
-                <FloatingTooltip
-                  style={{
-                    top: '-10px',
-                    right: '12px',
-                    left: 'auto',
-                    transform: 'translateY(-100%)',
-                  }}
-                >
-                  Fill the grid with your beat
-                </FloatingTooltip>
-              )}
-              {PAD_CONFIG.map((pad) => (
-                <TrackRow key={pad.id}>
-                  <TrackLabel>{pad.label}</TrackLabel>
-                  <StepGrid>
-                    {Array.from({ length: 4 }).map((_, beatIdx) => {
-                      const start = beatIdx * 4;
-                      return (
-                        <BeatGroup key={beatIdx}>
-                          {Array.from({ length: 4 }).map((__, offset) => {
-                            const stepIdx = start + offset;
-                            const isActive =
-                              sequencerPattern[pad.id]?.[stepIdx] ?? false;
-                            const isCurrent = playheadStep === stepIdx;
-                            const ariaState = isActive ? 'enabled' : 'muted';
-                            return (
-                              <StepButton
-                                key={stepIdx}
-                                id={stepDomId(pad.id, stepIdx)}
-                                type="button"
-                                $active={isActive}
-                                $current={isCurrent}
-                                aria-pressed={isActive}
-                                aria-label={`${pad.label} step ${stepIdx + 1
-                                  } ${ariaState}`}
-                                onClick={() =>
-                                  handleStepToggle(pad.id, stepIdx)
-                                }
-                                onKeyDown={(event) =>
-                                  handleStepKeyDown(event, pad.id, stepIdx)
-                                }
-                              />
-                            );
-                          })}
-                        </BeatGroup>
-                      );
-                    })}
-                  </StepGrid>
-                </TrackRow>
-              ))}
-            </TrackStack>
-            <PadSparkLayer aria-hidden="true">
-              {padSparks.map((spark) => (
-                <PadSpark
-                  key={spark.id}
-                  $left={spark.left}
-                  $color={spark.color}
-                  $size={spark.size}
-                />
-              ))}
-            </PadSparkLayer>
-            <VisuallyHidden aria-live="polite">{srMessage}</VisuallyHidden>
-          </SequencerWrapper>
-        )}
-      </SequencerFloat>
+                    Fill the grid with your beat
+                  </FloatingTooltip>
+                )}
+                {PAD_CONFIG.map((pad) => (
+                  <TrackRow key={pad.id}>
+                    <TrackLabel>{pad.label}</TrackLabel>
+                    <StepGrid>
+                      {Array.from({ length: 4 }).map((_, beatIdx) => {
+                        const start = beatIdx * 4;
+                        return (
+                          <BeatGroup key={beatIdx}>
+                            {Array.from({ length: 4 }).map((__, offset) => {
+                              const stepIdx = start + offset;
+                              const isActive =
+                                sequencerPattern[pad.id]?.[stepIdx] ?? false;
+                              const isCurrent = playheadStep === stepIdx;
+                              const ariaState = isActive ? "enabled" : "muted";
+                              return (
+                                <StepButton
+                                  key={stepIdx}
+                                  id={stepDomId(pad.id, stepIdx)}
+                                  type="button"
+                                  $active={isActive}
+                                  $current={isCurrent}
+                                  aria-pressed={isActive}
+                                  aria-label={`${pad.label} step ${stepIdx + 1
+                                    } ${ariaState}`}
+                                  onClick={() =>
+                                    handleStepToggle(pad.id, stepIdx)
+                                  }
+                                  onKeyDown={(event) =>
+                                    handleStepKeyDown(event, pad.id, stepIdx)
+                                  }
+                                />
+                              );
+                            })}
+                          </BeatGroup>
+                        );
+                      })}
+                    </StepGrid>
+                  </TrackRow>
+                ))}
+              </TrackStack>
+              <PadSparkLayer aria-hidden="true">
+                {padSparks.map((spark) => (
+                  <PadSpark
+                    key={spark.id}
+                    $left={spark.left}
+                    $color={spark.color}
+                    $size={spark.size}
+                  />
+                ))}
+              </PadSparkLayer>
+              <VisuallyHidden aria-live="polite">{srMessage}</VisuallyHidden>
+            </SequencerWrapper>
+          )}
+        </SequencerFloat>
+      )}
     </HeroContainer>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, PropsWithChildren } from 'react';
+import React, { useEffect, useRef, PropsWithChildren } from 'react';
 import { animate, stagger } from 'animejs';
 
 type RevealVariant =
@@ -46,11 +46,15 @@ export const Reveal: React.FC<PropsWithChildren<RevealProps>> = ({
   staggerSelector,
 }) => {
   const containerRef = useRef<HTMLElement | null>(null);
-  const [hasRevealed, setHasRevealed] = useState(false);
+  // Use a ref to track if animation has been triggered (avoids re-renders and effect re-runs)
+  const hasRevealedRef = useRef(false);
 
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return undefined;
+
+    // If we've already revealed and once is true, don't set up observer again
+    if (once && hasRevealedRef.current) return undefined;
 
     // Initial hidden state via inline styles to avoid layout shift
     const initialStyles: Partial<CSSStyleDeclaration> = { opacity: '0' };
@@ -81,14 +85,14 @@ export const Reveal: React.FC<PropsWithChildren<RevealProps>> = ({
     if (prefersReducedMotion()) {
       // Instantly reveal without motion
       Object.assign(element.style, { opacity: '1', transform: 'none' });
-      setHasRevealed(true);
+      hasRevealedRef.current = true;
       return undefined;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
+          if (entry.isIntersecting && !hasRevealedRef.current) {
             // Animate container
             const base: any = {
               opacity: [0, 1],
@@ -150,12 +154,12 @@ export const Reveal: React.FC<PropsWithChildren<RevealProps>> = ({
               }
             }
 
-            setHasRevealed(true);
+            hasRevealedRef.current = true;
             if (once) observer.unobserve(element);
-          } else if (!once && hasRevealed) {
+          } else if (!once && !entry.isIntersecting && hasRevealedRef.current) {
             // Optionally reset when leaving viewport
             Object.assign(element.style, initialStyles);
-            setHasRevealed(false);
+            hasRevealedRef.current = false;
           }
         });
       },
@@ -173,7 +177,6 @@ export const Reveal: React.FC<PropsWithChildren<RevealProps>> = ({
     threshold,
     rootMargin,
     staggerSelector,
-    hasRevealed,
   ]);
 
   return (

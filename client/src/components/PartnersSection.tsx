@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styled, { keyframes } from 'styled-components';
-import COLORS from '../../assets/colors.ts';
+import COLORS from '../../assets/colors';
 
 const PartnersSectionWrapper = styled.section`
   position: relative;

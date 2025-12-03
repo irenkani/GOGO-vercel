@@ -9,6 +9,14 @@ import defaultsRoutes from "./routes/defaultsRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import mediaRoutes from "./routes/mediaRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import financialRoutes from "./routes/financialRoutes.js";
+import populationRoutes from "./routes/populationRoutes.js";
+import methodRoutes from "./routes/methodRoutes.js";
+import curriculumRoutes from "./routes/curriculumRoutes.js";
+import impactSectionRoutes from "./routes/impactSectionRoutes.js";
+import hearOurImpactRoutes from "./routes/hearOurImpactRoutes.js";
+import testimonialsRoutes from "./routes/testimonialsRoutes.js";
+import nationalImpactRoutes from "./routes/nationalImpactRoutes.js";
 import { requireAuth } from "./middleware/authMiddleware.js";
 
 const app = express();
@@ -50,6 +58,14 @@ app.use("/api", missionRoutes);
 app.use("/api", defaultsRoutes);
 app.use("/api", uploadRoutes);
 app.use("/api", mediaRoutes);
+app.use("/api", financialRoutes);
+app.use("/api", populationRoutes);
+app.use("/api", methodRoutes);
+app.use("/api", curriculumRoutes);
+app.use("/api", impactSectionRoutes);
+app.use("/api", hearOurImpactRoutes);
+app.use("/api", testimonialsRoutes);
+app.use("/api", nationalImpactRoutes);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' });

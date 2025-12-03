@@ -35,6 +35,7 @@ router.put("/impact/hero", requireAuth, async (req, res, next) => {
       incomingKeys: Object.keys(data || {}),
     });
     const allowedKeys = [
+      "backgroundGradient",
       "backgroundColor",
       "backgroundImage",
       "backgroundImageGrayscale",
@@ -44,6 +45,14 @@ router.put("/impact/hero", requireAuth, async (req, res, next) => {
       "taglineColor",
       "primaryCtaColor",
       "secondaryCtaColor",
+      "primaryCtaBgColor",
+      "primaryCtaHoverBgColor",
+      "secondaryCtaBgColor",
+      "secondaryCtaHoverBgColor",
+      "titleUnderlineColor",
+      "bubbleTextColor",
+      "bubbleBgColor",
+      "bubbleBorderColor",
       "title",
       "subtitle",
       "year",

@@ -74,7 +74,7 @@ function AdminLoginPage() {
         <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 3 }}>
           Admin Login
         </Typography>
-        
+
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
@@ -122,4 +122,7 @@ function AdminLoginPage() {
 }
 
 export default AdminLoginPage;
+
+
+
 

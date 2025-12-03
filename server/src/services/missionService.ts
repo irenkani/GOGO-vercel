@@ -23,6 +23,8 @@ export interface MissionStat {
 }
 
 export interface MissionContent {
+  // Background - Full CSS gradient string
+  backgroundGradient?: string | null;
   backgroundColor?: string | null;
   backgroundImage?: string | null;
   backgroundImageAlt?: string | null;
@@ -60,7 +62,14 @@ export interface MissionContent {
   ticketStripeGradient?: string | null;
   ticketBorderColor?: string | null;
   ticketBackdropColor?: string | null;
+  ticketBlotch1Color?: string | null;
+  ticketBlotch2Color?: string | null;
   ticketShowBarcode?: boolean | null;
+  barcodeColor?: string | null;
+
+  statementBoxBorderColor?: string | null;
+  statementBoxBgColor?: string | null;
+  statementTextGradientColor?: string | null;
 
   backgroundLogo?: {
     enabled: boolean;
@@ -69,6 +78,12 @@ export interface MissionContent {
     rotationDeg?: number;
     scale?: number;
   } | null;
+
+  // Individual background logo properties (alternative to nested object)
+  backgroundLogoEnabled?: boolean | null;
+  backgroundLogoOpacity?: number | null;
+  backgroundLogoRotation?: number | null;
+  backgroundLogoScale?: number | null;
 
   statsTitle?: string | null;
   statsTitleColor?: string | null;
@@ -80,6 +95,15 @@ export interface MissionContent {
   } | null;
 
   modals?: MissionModal[] | null;
+
+  // Overlay colors (radial gradients behind content)
+  overlayColor1?: string | null;
+  overlayColor2?: string | null;
+  overlayOpacity?: number | null;
+
+  // Stat card styling
+  statCardBgColor?: string | null;
+  statCardBorderWidth?: number | null;
 }
 
 export interface MissionDocument extends MissionContent {

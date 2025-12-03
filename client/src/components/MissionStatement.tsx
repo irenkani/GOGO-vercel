@@ -1,25 +1,51 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import '../../assets/fonts/fonts.css';
 import { animate, stagger } from 'animejs';
-import COLORS from '../../assets/colors.ts';
+import COLORS from "../../assets/colors";
 import {
   GOGO_LOGO_BK_PATHS,
   GOGO_LOGO_BK_VIEWBOX,
-} from '../../assets/logos/gogoLogoBK';
+} from "../../assets/logos/gogoLogoBK";
 
-// Modern animations
-const shimmer = keyframes`
-  0% {
-    background-position: 0% 50%;
+/**
+ * Calculate relative luminance of a color to determine if it's light or dark.
+ * Returns true if the color is light (luminance > 0.5), false otherwise.
+ */
+function isLightColor(color: string | null | undefined): boolean {
+  if (!color) return false; // Default to dark background assumption
+  
+  // Try to parse the color
+  let r = 0, g = 0, b = 0;
+  
+  // Handle hex colors
+  if (color.startsWith('#')) {
+    const hex = color.slice(1);
+    if (hex.length === 3) {
+      r = parseInt(hex[0] + hex[0], 16);
+      g = parseInt(hex[1] + hex[1], 16);
+      b = parseInt(hex[2] + hex[2], 16);
+    } else if (hex.length >= 6) {
+      r = parseInt(hex.slice(0, 2), 16);
+      g = parseInt(hex.slice(2, 4), 16);
+      b = parseInt(hex.slice(4, 6), 16);
+    }
   }
-  50% {
-    background-position: 100% 50%;
+  // Handle rgb/rgba colors
+  else if (color.startsWith('rgb')) {
+    const match = color.match(/rgba?\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (match) {
+      r = parseInt(match[1], 10);
+      g = parseInt(match[2], 10);
+      b = parseInt(match[3], 10);
+    }
   }
-  100% {
-    background-position: 0% 50%;
-  }
-`;
+  
+  // Calculate relative luminance using sRGB formula
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5;
+}
+
 
 const float = keyframes`
   0%, 100% {
@@ -30,61 +56,6 @@ const float = keyframes`
   }
 `;
 
-const pulse = keyframes`
-  0%, 100% {
-    opacity: 0.8;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.03);
-  }
-`;
-
-const equalizer = keyframes`
-  0% {
-    height: 15%;
-  }
-  10% {
-    height: 70%;
-  }
-  30% {
-    height: 45%;
-  }
-  50% {
-    height: 85%;
-  }
-  70% {
-    height: 30%;
-  }
-  90% {
-    height: 60%;
-  }
-  100% {
-    height: 15%;
-  }
-`;
-
-// Add the scrolling animations back
-const slideLeft = keyframes`
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-25%);
-  }
-`;
-
-const slideRight = keyframes`
-  0% {
-    transform: translateX(-25%);
-  }
-  100% {
-    transform: translateX(0);
-  }
-`;
-
-// Section container with improved glass effect
 const SectionContainer = styled.div`
   padding: 4rem 2rem;
   position: relative;
@@ -99,7 +70,7 @@ const SectionContainer = styled.div`
   z-index: 1;
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     inset: 0;
     background: linear-gradient(
@@ -116,65 +87,6 @@ const SectionContainer = styled.div`
   }
 `;
 
-// Improved glass card with hover effects
-const ImageCard = styled.div`
-  position: relative;
-  width: 140px;
-  height: 140px;
-  margin: 0 1rem;
-  flex-shrink: 0;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  background: rgba(25, 25, 35, 0.3);
-  backdrop-filter: blur(8px);
-  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-  transform-origin: center;
-  animation: ${float} 6s ease-in-out infinite;
-  animation-delay: calc(var(--index) * 0.2s);
-
-  &:hover {
-    transform: translateY(-12px) scale(1.05);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4), 0 0 0 2px ${COLORS.gogo_blue}66;
-    z-index: 10;
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      120deg,
-      ${COLORS.gogo_blue}40,
-      ${COLORS.gogo_purple}40,
-      ${COLORS.gogo_pink}40,
-      ${COLORS.gogo_blue}40
-    );
-    background-size: 100% 100%;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    z-index: -1;
-  }
-
-  &:hover::before {
-    opacity: 0.3;
-  }
-`;
-
-const Image = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-
-  &:hover {
-    transform: scale(1.1);
-  }
-`;
-
-// (Conveyor belt moved to Outcomes section)
-
-// Background logo (absolute, behind content)
 const BgLogoWrap = styled.div`
   position: absolute;
   inset: 0;
@@ -194,7 +106,6 @@ const BgLogoSvg = styled.svg`
   transform-origin: 50% 50%;
 `;
 
-// Container (2D, no perspective)
 const TicketContainer = styled.div`
   margin: 3rem auto;
   width: 100%;
@@ -204,165 +115,6 @@ const TicketContainer = styled.div`
   justify-content: center;
 `;
 
-// (removed unused original ticket styles)
-
-// Back face small fields
-const FieldGroup = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-`;
-
-const Field = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0.4rem 0.5rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 6px;
-`;
-
-const FieldLabel = styled.div`
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 0.25rem;
-`;
-
-const FieldValue = styled.div`
-  font-weight: 800;
-  font-size: 0.85rem;
-`;
-
-// Back face layout for values
-const ValuesGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  width: 100%;
-  max-width: 840px;
-  margin-top: 0.75rem;
-
-  @media (max-width: 900px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const ValueCard = styled.div`
-  padding: 0.75rem 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  text-align: left;
-`;
-
-const ValueTitle = styled.div`
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  color: ${COLORS.gogo_teal};
-  margin-bottom: 0.35rem;
-`;
-
-const ValueText = styled.div`
-  font-size: 0.9rem;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.85);
-`;
-
-// (Removed photo grid in favor of logo)
-
-const Body = styled.div`
-  padding: 0.8rem 0.9rem;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 0.5rem;
-  z-index: 1;
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(
-        circle at 20% 30%,
-        ${COLORS.gogo_blue}19,
-        transparent 40%
-      ),
-      radial-gradient(
-        circle at 80% 70%,
-        ${COLORS.gogo_purple}19,
-        transparent 40%
-      );
-    pointer-events: none;
-  }
-`;
-
-const Overline = styled.div`
-  font-size: 0.65rem;
-  letter-spacing: 0.24em;
-  color: rgba(255, 255, 255, 0.72);
-  font-weight: 800;
-`;
-
-// (removed old Title)
-
-const MissionText = styled.p`
-  margin: 0;
-  font-family: 'Century Gothic', 'Arial', sans-serif;
-  font-weight: 800;
-  font-size: clamp(0.9rem, 1.8vw, 1rem);
-  line-height: 1.22;
-  background: linear-gradient(90deg, #ffffff, ${COLORS.gogo_teal});
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-`;
-
-const StatementBox = styled.div`
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.45rem 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  max-width: 820px;
-  backdrop-filter: blur(4px);
-`;
-
-const DateBox = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  letter-spacing: 0.24em;
-  font-weight: 800;
-  font-size: 0.78rem;
-`;
-
-const LocationText = styled.div`
-  color: rgba(255, 255, 255, 0.8);
-  letter-spacing: 0.18em;
-  font-size: 0.66rem;
-  margin-top: 0.05rem;
-`;
-
-// (removed old Serial)
-
-// =====================
-// Redesigned Ticket V2
-// =====================
 const Ticket = styled.div`
   position: relative;
   z-index: 2;
@@ -374,6 +126,18 @@ const Ticket = styled.div`
   min-height: 180px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+
+  /* CSS mask for punch-out notches - creates actual transparent holes */
+  --notch-size: 12px;
+  --notch-offset: 68px; /* Distance from right edge to notch center */
+  mask-image: 
+    radial-gradient(circle at calc(100% - var(--notch-offset)) 0, transparent var(--notch-size), black calc(var(--notch-size) + 0.5px)),
+    radial-gradient(circle at calc(100% - var(--notch-offset)) 100%, transparent var(--notch-size), black calc(var(--notch-size) + 0.5px));
+  mask-composite: intersect;
+  -webkit-mask-image: 
+    radial-gradient(circle at calc(100% - var(--notch-offset)) 0, transparent var(--notch-size), black calc(var(--notch-size) + 0.5px)),
+    radial-gradient(circle at calc(100% - var(--notch-offset)) 100%, transparent var(--notch-size), black calc(var(--notch-size) + 0.5px));
+  -webkit-mask-composite: source-in;
 
   &::before {
     content: '';
@@ -392,18 +156,25 @@ const Ticket = styled.div`
     pointer-events: none;
     background: radial-gradient(
         1200px 400px at 80% 20%,
-        ${COLORS.gogo_blue}22,
+        var(--ticket-blotch1-color, ${COLORS.gogo_blue}22),
         transparent 60%
       ),
       radial-gradient(
         800px 300px at 20% 80%,
-        ${COLORS.gogo_purple}22,
+        var(--ticket-blotch2-color, ${COLORS.gogo_purple}22),
         transparent 60%
       );
+  }
+
+  @media (max-width: 768px) {
+    mask-image: none;
+    -webkit-mask-image: none;
   }
 `;
 
 const TicketInner = styled.div`
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0;
@@ -430,28 +201,6 @@ const TicketRight = styled.div`
   border-left: 2px dashed rgba(255, 255, 255, 0.25);
   position: relative;
 
-  /* Notches (Stub cutout effect) */
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    left: -7px; /* Center on the 2px border */
-    width: 12px;
-    height: 12px;
-    background-color: white;
-    mix-blend-mode: destination-out;
-    border-radius: 50%;
-    z-index: 3;
-  }
-
-  &::before {
-    top: -24px; /* Positioned to cut the top edge (18px padding + 6px radius) */
-  }
-
-  &::after {
-    bottom: -24px; /* Positioned to cut the bottom edge */
-  }
-
   @media (max-width: 768px) {
     border-left: 0;
     padding-left: 0;
@@ -461,39 +210,13 @@ const TicketRight = styled.div`
     padding-top: 18px;
     margin-top: 12px;
     width: 100%;
-
-    &::before {
-      top: -7px;
-      left: -30px; /* Left padding (24px) + radius (6px) */
-    }
-
-    &::after {
-      top: -7px;
-      bottom: auto;
-      left: auto;
-      right: -26px; /* Right padding (20px) + radius (6px) */
-    }
   }
 `;
 
 const BadgeRow = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-`;
-
-const Badge = styled.span`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-weight: 800;
-  font-size: 0.62rem;
-  letter-spacing: 0.22em;
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  justify-content: flex-end;
 `;
 
 const Serial = styled.span`
@@ -514,11 +237,13 @@ const Title = styled.h3`
 `;
 
 const Statement = styled.div`
+  position: relative;
+  z-index: 2;
   display: inline-block;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--statement-box-border-color, rgba(255, 255, 255, 0.1));
+  background: var(--statement-box-bg-color, rgba(255, 255, 255, 0.04));
   max-width: 760px;
 `;
 
@@ -528,7 +253,7 @@ const StatementText = styled.p`
   font-weight: 800;
   font-size: clamp(0.9rem, 1.8vw, 1rem);
   line-height: 1.22;
-  background: linear-gradient(90deg, #ffffff, ${COLORS.gogo_teal});
+  background: var(--statement-text-gradient, linear-gradient(90deg, #ffffff, ${COLORS.gogo_teal}));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -550,7 +275,7 @@ const Barcode = styled.div`
   height: 168px;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(255, 255, 255, 0.85) 0 1.5px,
+    var(--barcode-color, rgba(255, 255, 255, 0.85)) 0 1.5px,
     transparent 1.5px 3px
   );
   border-radius: 6px;
@@ -571,59 +296,75 @@ const Barcode = styled.div`
 `;
 
 interface MissionStatementProps {
-  topImages: string[];
-  bottomImages: string[];
   statement: string;
   statementTitle?: string | null;
   statementTitleColor?: string | null;
   statementTextColor?: string | null;
+  statementTextGradientColor?: string | null;
   statementMeta?: string | null;
   statementMetaColor?: string | null;
+  statementBoxBorderColor?: string | null;
+  statementBoxBgColor?: string | null;
   serial?: string | null;
   serialColor?: string | null;
   ticketStripeGradient?: string | null;
   ticketBorderColor?: string | null;
   ticketBackdropColor?: string | null;
+  ticketBlotch1Color?: string | null;
+  ticketBlotch2Color?: string | null;
   ticketShowBarcode?: boolean | null;
-  backgroundLogoCfg?: {
-    opacity?: number | null;
-    rotationDeg?: number | null;
-    scale?: number | null;
-  } | null;
+  barcodeColor?: string | null;
+  backgroundLogoEnabled?: boolean | null;
+  backgroundLogoOpacity?: number | null;
+  backgroundLogoRotation?: number | null;
+  backgroundLogoScale?: number | null;
 }
 
 function MissionStatement({
-  topImages,
-  bottomImages,
   statement,
   statementTitle,
   statementTitleColor,
   statementTextColor,
+  statementTextGradientColor,
   statementMeta,
   statementMetaColor,
+  statementBoxBorderColor,
+  statementBoxBgColor,
   serial,
   serialColor,
   ticketStripeGradient,
   ticketBorderColor,
   ticketBackdropColor,
+  ticketBlotch1Color,
+  ticketBlotch2Color,
   ticketShowBarcode = true,
-  backgroundLogoCfg,
+  barcodeColor,
+  backgroundLogoEnabled = true,
+  backgroundLogoOpacity,
+  backgroundLogoRotation,
+  backgroundLogoScale,
 }: MissionStatementProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Belts moved to Outcomes section
+  // Calculate logo fill color based on backdrop luminance
+  // Light backgrounds get dark logo, dark backgrounds get light logo
+  const logoFillColor = useMemo(() => {
+    const isLight = isLightColor(ticketBackdropColor);
+    // Use semi-transparent black for light backgrounds, semi-transparent white for dark
+    return isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)';
+  }, [ticketBackdropColor]);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
     // Animate in the statement
     {
-      const statementEl = containerRef.current.querySelector('.statement');
+      const statementEl = containerRef.current.querySelector(".statement");
       if (statementEl) {
         animate(statementEl as Element, {
           translateY: [40, 0],
           opacity: [0, 1],
-          easing: 'easeOutCubic',
+          easing: "easeOutCubic",
           duration: 1000,
           delay: 300,
         });
@@ -632,13 +373,13 @@ function MissionStatement({
 
     // Animate in stats cards
     {
-      const statCards = containerRef.current.querySelectorAll('.stat-card');
+      const statCards = containerRef.current.querySelectorAll(".stat-card");
       if (statCards && statCards.length > 0) {
         animate(statCards as unknown as Element[], {
           scale: [0.9, 1],
           opacity: [0, 1],
           delay: stagger(100, { start: 600 }),
-          easing: 'easeOutElastic(1, 0.6)',
+          easing: "easeOutElastic(1, 0.6)",
           duration: 1200,
         });
       }
@@ -654,52 +395,100 @@ function MissionStatement({
           style={{
             ...(ticketBorderColor ? { borderColor: ticketBorderColor } : {}),
             ...(ticketBackdropColor ? { background: ticketBackdropColor } : {}),
-            ...(ticketStripeGradient ? ({ ['--ticket-stripe-gradient' as any]: ticketStripeGradient } as React.CSSProperties) : {}),
-          }}
+            ...(ticketStripeGradient
+              ? { ["--ticket-stripe-gradient" as any]: ticketStripeGradient }
+              : {}),
+            ...(ticketBlotch1Color
+              ? { ["--ticket-blotch1-color" as any]: ticketBlotch1Color }
+              : {}),
+            ...(ticketBlotch2Color
+              ? { ["--ticket-blotch2-color" as any]: ticketBlotch2Color }
+              : {}),
+          } as React.CSSProperties}
         >
-          <BgLogoWrap aria-hidden="true">
-            <BgLogoSvg
-              viewBox={GOGO_LOGO_BK_VIEWBOX}
-              role="img"
-              style={{
-                ...(backgroundLogoCfg?.opacity != null ? { opacity: backgroundLogoCfg.opacity } : {}),
-                ...(backgroundLogoCfg?.rotationDeg != null || backgroundLogoCfg?.scale != null
-                  ? {
-                      transform: `translate(-50%, -50%) rotate(${backgroundLogoCfg?.rotationDeg ?? 90}deg) scale(${backgroundLogoCfg?.scale ?? 0.82})`,
-                    }
-                  : {}),
-              }}
-            >
-              {GOGO_LOGO_BK_PATHS.map(({ d, transform }) => (
-                <path
-                  key={`${d}-${transform ?? ''}`}
-                  d={d}
-                  transform={transform}
-                  fill="rgba(255, 255, 255, 0.06)"
-                />
-              ))}
-            </BgLogoSvg>
-          </BgLogoWrap>
+          {backgroundLogoEnabled !== false && (
+            <BgLogoWrap aria-hidden="true">
+              <BgLogoSvg
+                viewBox={GOGO_LOGO_BK_VIEWBOX}
+                role="img"
+                style={{
+                  opacity: backgroundLogoOpacity ?? 0.08,
+                  transform: `translate(-50%, -50%) rotate(${backgroundLogoRotation ?? 90}deg) scale(${backgroundLogoScale ?? 0.82})`,
+                }}
+              >
+                {GOGO_LOGO_BK_PATHS.map(({ d, transform }) => (
+                  <path
+                    key={`${d}-${transform ?? ""}`}
+                    d={d}
+                    transform={transform}
+                    fill={logoFillColor}
+                  />
+                ))}
+              </BgLogoSvg>
+            </BgLogoWrap>
+          )}
           <TicketInner>
             <TicketLeft>
               <BadgeRow>
-                <Badge>TICKET</Badge>
-                <Serial style={serialColor ? { color: serialColor } : undefined}>{serial ?? 'SN-GOGO-2025'}</Serial>
+                <Serial
+                  style={serialColor ? { color: serialColor } : undefined}
+                >
+                  {serial ?? "SN-GOGO-2025"}
+                </Serial>
               </BadgeRow>
-              <Title style={statementTitleColor ? { color: statementTitleColor } : undefined}>
-                {statementTitle ?? 'MISSION STATEMENT — ADMIT ALL'}
+              <Title
+                style={
+                  statementTitleColor
+                    ? { color: statementTitleColor }
+                    : undefined
+                }
+              >
+                {statementTitle ?? "MISSION STATEMENT — ADMIT ALL"}
               </Title>
-              <Statement>
-                <StatementText style={statementTextColor ? { WebkitTextFillColor: 'unset', color: statementTextColor, background: 'none' } : undefined}>
+              <Statement
+                style={{
+                  ...(statementBoxBorderColor
+                    ? { ["--statement-box-border-color" as any]: statementBoxBorderColor }
+                    : {}),
+                  ...(statementBoxBgColor
+                    ? { ["--statement-box-bg-color" as any]: statementBoxBgColor }
+                    : {}),
+                } as React.CSSProperties}
+              >
+                <StatementText
+                  style={
+                    statementTextColor
+                      ? {
+                          WebkitTextFillColor: "unset",
+                          color: statementTextColor,
+                          background: "none",
+                        }
+                      : statementTextGradientColor
+                        ? { ["--statement-text-gradient" as any]: `linear-gradient(90deg, #ffffff, ${statementTextGradientColor})` } as React.CSSProperties
+                        : undefined
+                  }
+                >
                   {statement}
                 </StatementText>
               </Statement>
-              <Meta style={statementMetaColor ? { color: statementMetaColor } : undefined}>
-                {statementMeta ?? 'ISSUED 2025 • CHOOSE YOUR SOUND'}
+              <Meta
+                style={
+                  statementMetaColor ? { color: statementMetaColor } : undefined
+                }
+              >
+                {statementMeta ?? "ISSUED 2025 • CHOOSE YOUR SOUND"}
               </Meta>
             </TicketLeft>
             <TicketRight>
-              {ticketShowBarcode ? <Barcode /> : null}
+              {ticketShowBarcode ? (
+                <Barcode
+                  style={
+                    barcodeColor
+                      ? { ["--barcode-color" as any]: barcodeColor } as React.CSSProperties
+                      : undefined
+                  }
+                />
+              ) : null}
             </TicketRight>
           </TicketInner>
         </Ticket>

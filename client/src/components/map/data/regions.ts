@@ -1,5 +1,5 @@
 import { Region } from '../types';
-import COLORS from '../../../../assets/colors.ts';
+import COLORS from '../../../../assets/colors';
 
 // Major cities as regions with their coordinates and bounds
 const regions: Region[] = [
