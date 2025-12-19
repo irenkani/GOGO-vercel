@@ -11,7 +11,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './EnhancedLeafletMap.css';
 import styled from 'styled-components';
-import COLORS from '../../../assets/colors.ts';
+import COLORS from '../../../assets/colors';
 import { darkenColor, lightenColor } from './utils/colorHelpers';
 import { Region, Sublocation } from './types';
 import { MapRegion as ApiMapRegion, MapLocation as ApiMapLocation } from '../../services/impact.api';

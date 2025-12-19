@@ -22,6 +22,8 @@ interface RevealProps {
   rootMargin?: string;
   /** Optional CSS selector to stagger children within this container */
   staggerSelector?: string;
+  /** If false, disables animation and shows content immediately */
+  enabled?: boolean;
 }
 
 function prefersReducedMotion(): boolean {
@@ -44,6 +46,7 @@ export const Reveal: React.FC<PropsWithChildren<RevealProps>> = ({
   threshold = 0.2,
   rootMargin = '0px',
   staggerSelector,
+  enabled = true,
 }) => {
   const containerRef = useRef<HTMLElement | null>(null);
   // Use a ref to track if animation has been triggered (avoids re-renders and effect re-runs)
@@ -52,6 +55,12 @@ export const Reveal: React.FC<PropsWithChildren<RevealProps>> = ({
   useEffect(() => {
     const element = containerRef.current;
     if (!element) return undefined;
+
+    // If animations are disabled, show content immediately
+    if (!enabled) {
+      Object.assign(element.style, { opacity: '1', transform: 'none' });
+      return undefined;
+    }
 
     // If we've already revealed and once is true, don't set up observer again
     if (once && hasRevealedRef.current) return undefined;
@@ -177,6 +186,7 @@ export const Reveal: React.FC<PropsWithChildren<RevealProps>> = ({
     threshold,
     rootMargin,
     staggerSelector,
+    enabled,
   ]);
 
   return (
