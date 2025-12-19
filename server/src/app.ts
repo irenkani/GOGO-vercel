@@ -27,9 +27,30 @@ import { requireAuth } from "./middleware/authMiddleware.js";
 
 const app = express();
 
+// CORS configuration for local dev and Vercel production
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:4000',
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, server-to-server, etc)
+      if (!origin) return callback(null, true);
+      // Allow any vercel.app subdomain or explicitly allowed origins
+      if (
+        allowedOrigins.some(allowed => origin === allowed) ||
+        origin.includes('.vercel.app')
+      ) {
+        return callback(null, true);
+      }
+      console.warn('[CORS] Blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   }),
 );
@@ -47,10 +68,10 @@ app.use(
       touchAfter: 24 * 3600, // lazy session update
     }),
     cookie: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       httpOnly: true,
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-origin cookies in production
     },
   })
 );

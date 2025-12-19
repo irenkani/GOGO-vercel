@@ -17,7 +17,9 @@ export interface SaveMediaResponse {
   data: Record<string, unknown>;
 }
 
-const DEFAULT_BACKEND_URL = 'http://localhost:4000';
+// In production (Vercel), use relative URLs (same origin)
+// In development, use localhost:4000
+const DEFAULT_BACKEND_URL = import.meta.env.PROD ? '' : 'http://localhost:4000';
 const API_BASE_URL =
   (import.meta.env.VITE_BACKEND_URL as string | undefined) ?? DEFAULT_BACKEND_URL;
 
