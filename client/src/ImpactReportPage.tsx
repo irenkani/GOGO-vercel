@@ -245,7 +245,9 @@ const MusicSectionTitle = styled.h2`
     ${COLORS.gogo_teal}
   );
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+  color: transparent;
   display: inline-block;
 `;
 
@@ -274,8 +276,14 @@ const LoadingContainer = styled.div`
 `;
 
 
+// Props interface for ImpactReportPage
+interface ImpactReportPageProps {
+  /** When true, skips intro overlay and optimizes for PDF conversion */
+  printMode?: boolean;
+}
+
 // Main component
-function ImpactReportPage() {
+function ImpactReportPage({ printMode = false }: ImpactReportPageProps) {
   // Centralized data loading state
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -298,8 +306,13 @@ function ImpactReportPage() {
   const flexRef = useRef<HTMLDivElement>(null);
   const footerRef = useRef<HTMLDivElement>(null);
 
+  // Check for skipIntro query parameter (used by PDF export)
+  const shouldSkipIntro = typeof window !== 'undefined' && 
+    new URLSearchParams(window.location.search).get('skipIntro') === 'true';
+    
   // Only show the intro once per tab: initialize from the module-level flag.
-  const [introComplete, setIntroComplete] = useState(hasShownIntroInThisTab);
+  // In print mode, always skip the intro overlay.
+  const [introComplete, setIntroComplete] = useState(printMode || hasShownIntroInThisTab);
 
   // Timeout duration for loading data (30 seconds)
   const LOAD_TIMEOUT_MS = 30000;
@@ -356,7 +369,7 @@ function ImpactReportPage() {
           const missingSections = DEFAULT_SECTION_ORDER.filter(s => !loadedOrder.includes(s));
           setSectionOrder([...loadedOrder, ...missingSections]);
         }
-        
+
         // Load disabled sections from defaults
         if (defaults?.disabledSections && Array.isArray(defaults.disabledSections)) {
           setDisabledSections(defaults.disabledSections as ReorderableSectionKey[]);
@@ -643,10 +656,10 @@ function ImpactReportPage() {
   // Render a section based on its key
   const renderSection = (sectionKey: ReorderableSectionKey) => {
     if (!reportData) return null;
-    
+
     // Skip disabled sections
     if (disabledSections.includes(sectionKey)) return null;
-    
+
     switch (sectionKey) {
       case 'hero':
         return (
@@ -779,7 +792,11 @@ function ImpactReportPage() {
     <div className="impact-report">
       {!introComplete && <IntroOverlay onFinish={handleIntroFinish} isLoading={loading} />}
       <div className="spotify-gradient-background" />
-      <Header />
+      <Header 
+        sectionOrder={sectionOrder} 
+        disabledSections={disabledSections} 
+        heroYear={reportData?.hero?.year}
+      />
       <div className="main-content" style={{ paddingBottom: 0 }}>
         {reportData && (
           <>
