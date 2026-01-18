@@ -5,6 +5,7 @@ import ImpactReportPage from './src/ImpactReportPage.tsx';
 import { ImpactReportCustomizationPage, AdminLoginPage } from './src/Admin';
 import NotFoundPage from './src/pages/NotFoundPage';
 import ProtectedRoute from "./src/components/ProtectedRoute.tsx";
+import ImpactReportPDFTemplate from './src/components/ImpactReportPDFTemplate.tsx';
 import { Provider } from "react-redux";
 import { store } from "./src/util/redux/store.ts";
 import { SnackbarProvider } from "notistack";
@@ -35,6 +36,15 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
             element={
               <ProtectedRoute>
                 <ImpactReportCustomizationPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* PDF Preview route - opens in new window for printing */}
+          <Route
+            path="/admin/impact-report-pdf-preview"
+            element={
+              <ProtectedRoute>
+                <ImpactReportPDFTemplate />
               </ProtectedRoute>
             }
           />

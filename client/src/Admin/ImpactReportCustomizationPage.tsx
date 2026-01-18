@@ -11,6 +11,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ScreenGrid from '../components/ScreenGrid';
 import COLORS from '../../assets/colors';
 import HeroSection from '../components/HeroSection';
@@ -2700,6 +2701,20 @@ function ImpactReportCustomizationPage() {
                       disabled={!isDirty}
                     >
                       Discard Changes
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<PictureAsPdfIcon />}
+                      onClick={() => {
+                        // Open PDF preview in new window
+                        window.open('/admin/impact-report-pdf-preview', '_blank');
+                      }}
+                      sx={{
+                        bgcolor: COLORS.gogo_purple,
+                        "&:hover": { bgcolor: "#513ea1" },
+                      }}
+                    >
+                      Download PDF
                     </Button>
                   </Box>
                 </Box>
